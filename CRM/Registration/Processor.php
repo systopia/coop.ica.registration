@@ -24,9 +24,13 @@ class CRM_Registration_Processor {
   protected $data;
   protected $custom_field_map;
 
-  function __construct(&$data) {
-    $this->data = $data;
+  function __construct($data) {
     $this->custom_field_map = array();
+    $this->updateData($data);
+  }
+
+  public function updateData($data) {
+    $this->data = $data;
   }
 
   /**
@@ -48,7 +52,7 @@ class CRM_Registration_Processor {
     // step 1: create participant objects
     $master_participant_id = $this->createParticipant($this->data['participant']);
     if (!empty($this->data['additional_participants'])) {
-      foreach ($this->data['additional_participants'] as $additional_participant) {
+      foreach ($this->data['additional_participants'] as &$additional_participant) {
         $this->createParticipant($additional_participant, $master_participant_id);
       }
     }
@@ -70,6 +74,7 @@ class CRM_Registration_Processor {
   protected function createParticipant(&$pdata, $master_participant_id = NULL) {
     // derive some values
     $pdata['register_date'] = $this->data['submission_date'];
+    $pdata['event_id']      = $this->data['event_id'];
     if ($master_participant_id) {
       $pdata['registered_by_id'] = $master_participant_id;
     }
@@ -98,7 +103,7 @@ class CRM_Registration_Processor {
       'contact_id'            => $main_participant['contact_id'],
       'trxn_id'               => $this->data['registration_id'],
       'currency'              => $currency,
-      'total'                 => $total_amount,
+      'total_amount'          => $total,
       'is_pay_later'          => 1,
       'payment_instrument_id' => 5, // default (EFT)
       'financial_type_id'     => 4, // default (Event Fee)
@@ -115,14 +120,17 @@ class CRM_Registration_Processor {
     // and create the contribution
     $contribution = civicrm_api3('Contribution', 'create', $contribution_data);
 
-
     // now create all line items
     if ($main_participant['participant_status'] == "Registered") {
-      $this->createLineItem($main_participant, $contribution['id'], $contribution_data['financial_type_id']);
+      $this->createRegistrationLineItem($main_participant, $contribution['id'], $contribution_data['financial_type_id']);
     }
     foreach ($other_participants as $other_participant) {
       $this->createRegistrationLineItem($other_participant, $contribution['id'], $contribution_data['financial_type_id']);
     }
+
+    // finally remove the default line item
+    $original_line_item = civicrm_api3('LineItem', 'getsingle', array('contribution_id' => $contribution['id'], 'entity_table' => 'civicrm_contribution', 'entity_id' => $contribution['id']));
+    civicrm_api3('LineItem', 'delete', array('id' => $original_line_item['id']));
   }
 
 

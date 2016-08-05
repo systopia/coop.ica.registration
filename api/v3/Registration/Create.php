@@ -35,18 +35,19 @@ function civicrm_api3_registration_create($params) {
   // match/create all the contacts involved that have no ID using XCM
   if (empty($params['participant']['contact_id'])) {
     $xcm_query = civicrm_api3('Contact', 'getorcreate', $params['participant']);
-    $params['participant']['contact_id'] = $xcm_query['values']['contact_id'];
+    $params['participant']['contact_id'] = $xcm_query['id'];
   }
   if (!empty($params['additional_participants'])) {
     foreach ($params['additional_participants'] as &$participant) {
       if (empty($participant['contact_id'])) {
         $xcm_query = civicrm_api3('Contact', 'getorcreate', $participant);
-        $participant['contact_id'] = $xcm_query['values']['contact_id'];
+        $participant['contact_id'] = $xcm_query['id'];
       }
     }
   }
 
   // finally, run the registration process
+  $processor->updateData($params);
   $registration = $processor->createRegistration();
 
   // and return the good news (otherwise an Exception would have occurred)
@@ -71,6 +72,19 @@ function _civicrm_api3_registration_create_spec(&$params) {
     'api.required' => 0,
     'title'        => 'Additional Participants',
     'description'  => 'An array of additional participants, each one formatted like the "participant" parameter',
+    );
+  $params['event_id'] = array(
+    'name'         => 'event_id',
+    'api.required' => 1,
+    'title'        => 'Event ID',
+    'description'  => 'The event you want to register participants for',
+    );
+  $params['submission_date'] = array(
+    'name'         => 'submission_date',
+    'api.required' => 0,
+    'title'        => 'Submission Date',
+    'api.default'  => date('YmdHis'),
+    'description'  => 'Timestamp of the submission (YmdHis), default is now'
     );
 }
 
