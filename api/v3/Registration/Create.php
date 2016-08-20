@@ -33,10 +33,16 @@ function civicrm_api3_registration_create($params) {
   }
 
   // match/create all the contacts involved that have no ID using XCM
-  if (empty($params['participant']['contact_id'])) {
+  if (!empty($params['organisation']) && empty($params['organisation']['contact_id'])) {
+    $xcm_query = civicrm_api3('Contact', 'getorcreate', $params['organisation']);
+    $params['organisation']['contact_id'] = $xcm_query['id'];
+  }
+
+  if (!empty($params['participant']) && empty($params['participant']['contact_id'])) {
     $xcm_query = civicrm_api3('Contact', 'getorcreate', $params['participant']);
     $params['participant']['contact_id'] = $xcm_query['id'];
   }
+
   if (!empty($params['additional_participants'])) {
     foreach ($params['additional_participants'] as &$participant) {
       if (empty($participant['contact_id'])) {

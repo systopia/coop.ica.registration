@@ -49,39 +49,83 @@ class CRM_Registration_Processor {
    * main function to perform the registration process
    */
   public function createRegistration() {
+    // step 0: add extra data
+    $this->enrichData();
+
     // step 1: create participant objects
-    $master_participant_id = $this->createParticipant($this->data['participant']);
+    $master_participant = $this->createParticipant($this->data['participant']);
     if (!empty($this->data['additional_participants'])) {
       foreach ($this->data['additional_participants'] as &$additional_participant) {
-        $this->createParticipant($additional_participant, $master_participant_id);
+        $this->createParticipant($additional_participant, $master_participant);
       }
     }
 
     // step 2: create contribution + line items
     if (empty($this->data['additional_participants'])) {
-      $this->createRegistrationPayment($this->data['participant']);
+      // $this->createRegistrationPayment($this->data['participant']);
     } else {
-      $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
+      // $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
     }
 
     // step 3: add relationships
+    
     // TODO: later
   }
 
   /**
    * Turn the participant data into 'Participant' (registration) entities
    */
-  protected function createParticipant(&$pdata, $master_participant_id = NULL) {
+  protected function createParticipant(&$pdata, $master_participant = NULL) {
     // derive some values
-    $pdata['register_date'] = $this->data['submission_date'];
-    $pdata['event_id']      = $this->data['event_id'];
-    if ($master_participant_id) {
-      $pdata['registered_by_id'] = $master_participant_id;
+    $pdata['custom_registration_id'] = $this->data['registration_id'];
+    $pdata['register_date']          = $this->data['submission_date'];
+    $pdata['event_id']               = $this->data['event_id'];
+    $pdata['custom_created_version'] = $this->data['created_version'];
+    if ($master_participant) {
+      $pdata['registered_by_id']    = $master_participant['participant_id'];
+      $pdata['custom_main_contact'] = $master_participant['contact_id'];
+    }
+
+    // set the organisation
+    if (!empty($this->data['organisation']['contact_id'])) {
+      $pdata['custom_registered_organisation'] = $this->data['organisation']['contact_id'];
+    }
+
+    // set "partner of" for partners
+    if (!empty($pdata['partner_of'])) {
+      $partner_of = $this->getParticipantData($pdata['partner_of']);
+      if (empty($partner_of)) {
+        throw new Exception("Referenced participant '{$pdata['partner_of']}' isn't part of this submission.", 1);
+      } else {
+        $pdata['custom_partner_of'] = $partner_of['contact_id'];
+      }
+    }
+
+    // resolve custom fields
+    $this->resolveCustomFields($pdata);
+    // look up participant roles (automatic lookup doesn't work for arrays)
+    if (is_array($pdata['participant_role'])) {
+      $role_ids = array();
+      foreach ($pdata['participant_role'] as $role_name) {
+        if (is_numeric($role_name)) {
+          $role_ids[] = $role_name;
+        } else {
+          $role_id = CRM_Core_OptionGroup::getValue('participant_role', $role_name, 'label');
+          if ($role_id) {
+            $role_ids[] = $role_id;
+          } else {
+            throw new Exception("Unknown participant role '{$role_name}'", 1);
+          }
+        }
+      }
+      $pdata['participant_role'] = $role_ids;
     }
 
     // and create participant
     $result = civicrm_api3('Participant', 'create', $pdata);
     $pdata['participant_id'] = $result['id'];
+
+    return $pdata;
   }
 
   /**
@@ -94,7 +138,7 @@ class CRM_Registration_Processor {
     foreach ($other_participants as $other_participant) {
       $total += $other_participant['participant_fee_amount'];
       if ($other_participant['participant_fee_currency'] != $currency) {
-        throw new Exception("Inconsisten currencies in 'participant_fee_currency'", 1);        
+        throw new Exception("Inconsistent currencies in 'participant_fee_currency'", 1);
       }
     }
 
@@ -211,9 +255,9 @@ class CRM_Registration_Processor {
     // look up and store field mappings
     $field_lookup = civicrm_api3('CustomField', 'get', array('name' => array('IN' => $missing_field_names)));
     foreach ($field_lookup['values'] as $custom_field) {
-      if (!isset($custom_field_map["custom_{$custom_field['name']}"])) {
-        $custom_field_map["custom_{$custom_field['name']}"] = "custom_{$custom_field['id']}";
-      } elseif ($custom_field_map["custom_{$custom_field['name']}"] != "custom_{$custom_field['id']}") {
+      if (!isset($this->custom_field_map["custom_{$custom_field['name']}"])) {
+        $this->custom_field_map["custom_{$custom_field['name']}"] = "custom_{$custom_field['id']}";
+      } elseif ($this->custom_field_map["custom_{$custom_field['name']}"] != "custom_{$custom_field['id']}") {
         throw new Exception("Custom field '{$custom_field['name']}' is ambiguous!", 1);
       }
     }
@@ -222,7 +266,43 @@ class CRM_Registration_Processor {
     $still_missing_fields = array_diff($missing_custom_fields, array_keys($this->custom_field_map));
     if (!empty($still_missing_fields)) {
       $field_list = implode("','", $still_missing_fields);
-      throw new Exception("Custom field(s) '$still_missing_fields' couldn't be resolved!", 1);
+      throw new Exception("Custom field(s) '$field_list' couldn't be resolved!", 1);
     }
+  }
+
+  /**
+   * get the participant referenced by the participant_key
+   *  this is used to e.g. link the registrant to a spouse
+   */
+  protected function getParticipantData($participant_key) {
+    if ($this->data['participant']['participant_key'] == $participant_key) {
+      return $this->data['participant'];
+    } elseif ($this->data['organisation']['participant_key'] == $participant_key) {
+      return $this->data['organisation'];
+    } else {
+      foreach ($this->data['additional_participants'] as $additional_participant) {
+        if ($additional_participant['participant_key'] == $participant_key) {
+          return $additional_participant;
+        }
+      }
+    }
+
+    // not found
+    return NULL;
+  }
+
+  /**
+   * add some extra data
+   */
+  protected function enrichData() {
+    // get extension version
+    $mapper = CRM_Extension_System::singleton()->getMapper();
+    $info   = $mapper->keyToInfo('coop.ica.registration');
+    if (empty($this->data['created_version'])) {
+      $this->data['created_version'] = "n/a";
+    }
+    $this->data['created_version'] = $this->data['created_version'] . ' | ' . $info->version;
+
+    // TODO: more?
   }
 }
