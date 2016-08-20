@@ -62,9 +62,9 @@ class CRM_Registration_Processor {
 
     // step 2: create contribution + line items
     if (empty($this->data['additional_participants'])) {
-      // $this->createRegistrationPayment($this->data['participant']);
+      $this->createRegistrationPayment($this->data['participant']);
     } else {
-      // $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
+      $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
     }
 
     // step 3: add relationships
@@ -191,6 +191,7 @@ class CRM_Registration_Processor {
       'entity_table'      => 'civicrm_participant',
       'entity_id'         => $participant['participant_id'],
       'contribution_id'   => $contribution_id,
+      'label'             => 'Registration Fee',
       'qty'               => 1,
       'unit_price'        => $participant['participant_fee_amount'],
       'line_total'        => $participant['participant_fee_amount'],
