@@ -100,57 +100,6 @@ function civicrm_api3_registration_test($params) {
        }
     }', true)
   ));
-
-
-  // // return civicrm_api3_create_success(civicrm_api3('Registration', 'create', array(
-  //   'submission_date'  => date('YmdHis'),
-  //   'registration_id'  => 'TEST-' . rand(),
-  //   'event_id'         => 1,
-  //   'participant' => array(
-  //       'first_name'                 => 'Harold',
-  //       'last_name'                  => 'Testbloke',
-  //       'email'                      => 'harold@testblo.ke',
-  //       'contact_type'               => 'Individual',
-  //       'participant_status'         => 'Registered',
-  //       'participant_role'           => 'Attendee',
-  //       'participant_fee_amount'     => '100',
-  //       'participant_fee_currency'   => 'EUR',
-  //       'participant_fee_level'      => 'International',
-  //       'custom_badge'               => 'Harry',
-  //       'custom_organisation_badge'  => 'Testorg',
-  //       'custom_Languages'           => 'English',
-  //       'custom_created_version'     => '0.1',
-  //     ),
-  //   'additional_participants' => array(
-  //     0 => array(
-  //         'first_name'                 => 'George',
-  //         'last_name'                  => 'Testbloke',
-  //         'email'                      => 'george@testblo.ke',
-  //         'contact_type'               => 'Individual',
-  //         'participant_status'         => 'Registered',
-  //         'participant_role'           => 'Attendee',
-  //         'participant_fee_amount'     => '200',
-  //         'participant_fee_currency'   => 'EUR',
-  //         'participant_fee_level'      => 'Youth',
-  //         'custom_badge'               => 'George',
-  //         'custom_organisation_badge'  => 'Testorg',
-  //         'custom_Languages'           => 'Spanish',
-  //       ),
-  //     1 => array(
-  //         'first_name'                 => 'Sarah',
-  //         'last_name'                  => 'Testblokette',
-  //         'email'                      => 'sarah@testbloke.te',
-  //         'contact_type'               => 'Individual',
-  //         'participant_status'         => 'Registered',
-  //         'participant_role'           => 'Partner',
-  //         'participant_fee_amount'     => '400',
-  //         'participant_fee_currency'   => 'EUR',
-  //         'participant_fee_level'      => 'Spouse',
-  //         'custom_badge'               => 'Sarah (George)',
-  //         'custom_organisation_badge'  => '',
-  //         'custom_Languages'           => 'Spanish',
-  //       ),
-  //   ))));
 }
 
 /**
