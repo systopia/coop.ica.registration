@@ -24,7 +24,6 @@
  */
 function civicrm_api3_registration_payment($params) { 
   // check input
-  error_log("REGISTRATION:PAYMENT: " . json_encode($params));
   $status_id = CRM_Core_OptionGroup::getValue('contribution_status', $params['status'], 'name');
   if (!$status_id) {
     return civicrm_api3_create_error("Invalid status '{$params['status']}'!");
@@ -45,7 +44,6 @@ function civicrm_api3_registration_payment($params) {
       'contribution_status_id' => $status_id,
       'receive_date'           => $params['timestamp']));    
   } catch (Exception $e) {
-    error_log("Exception: " . $e->getMessage());
     civicrm_api3_create_error($e->getMessage());
   }
 
