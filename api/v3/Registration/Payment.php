@@ -22,7 +22,7 @@
  * @return array API result array
  * @access public
  */
-function civicrm_api3_registration_payment($params) {
+function civicrm_api3_registration_payment($params) { 
   // check input
   error_log("REGISTRATION:PAYMENT: " . json_encode($params));
   $status_id = CRM_Core_OptionGroup::getValue('contribution_status', $params['status'], 'name');
@@ -39,6 +39,7 @@ function civicrm_api3_registration_payment($params) {
 
   // set the status ID
   try {
+    _civicrm_api3_fix_API_UID();
     civicrm_api3('Contribution', 'create', array(
       'id'                     => $contribution['id'], 
       'contribution_status_id' => $status_id,
@@ -83,5 +84,35 @@ function _civicrm_api3_registration_payment_spec(&$params) {
     'title'        => 'Timestamp of the transaction',
     'description'  => 'This will be handed down to the contributions\'s receive_date. Default is NOW',
     );
+}
+
+
+/**
+ * Fixed API bug, where activity creation needs a valid userID
+ *
+ * Copied from https://github.com/CiviCooP/org.civicoop.apiuidfix
+ * by Jaap Jansma, CiviCoop
+ */
+function _civicrm_api3_fix_API_UID() {
+  // see https://github.com/CiviCooP/org.civicoop.apiuidfix
+  $session = CRM_Core_Session::singleton();
+  $userId = $session->get('userID');
+  if (empty($userId)) {
+    $valid_user = FALSE;
+
+    // Check and see if a valid secret API key is provided.
+    $api_key = CRM_Utils_Request::retrieve('api_key', 'String', $store, FALSE, NULL, 'REQUEST');
+    if (!$api_key || strtolower($api_key) == 'null') {
+      return; // nothing we can do
+    }
+
+    $valid_user = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_Contact', $api_key, 'id', 'api_key');
+
+    // If we didn't find a valid user, die
+    if (!empty($valid_user)) {
+      //now set the UID into the session
+      $session->set('userID', $valid_user);
+    }  
+  }
 }
 
