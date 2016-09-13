@@ -18,12 +18,17 @@
  * TEST FOR Registration.create
  */
 function civicrm_api3_registration_test($params) {
+  // return civicrm_api3_create_success(civicrm_api3('Registration', 'payment', json_decode('{
+  //   "registration_id":"GA2017-999-03",
+  //   "status":"Completed"
+  //   }', true)
+  // ));
 
   return civicrm_api3_create_success(civicrm_api3('Registration', 'create', json_decode('{
-       "submission_date":"20160819154607",
-       "created_version":"1.0",
-       "registration_id":"GA2017-3-78",
+       "submission_date":"20160822094006",
+       "registration_id":"GA2017-999-03",
        "event_id":"1",
+       "payment_mode":"offline",
        "additional_participants":[
           {
              "participant_key":"additional_1",
@@ -36,18 +41,18 @@ function civicrm_api3_registration_test($params) {
                 "Participant"
              ],
              "participant_fee_level":"International Member",
-             "first_name":"kjhlkjhlk",
-             "last_name":"lklkjhl",
-             "prefix_id":"2",
-             "custom_Position":"asdasd",
-             "custom_Languages":"French",
-             "custom_organisation_badge":"participanttest org",
-             "participant_note":"kljhlkjh",
+             "first_name":"Super",
+             "last_name":"Gal",
+             "prefix_id":"1",
+             "custom_Position":"Someorg",
+             "custom_Languages":"Malaysian",
+             "custom_organisation_badge":"Someorg",
+             "participant_note":"yeast",
              "email":"endres@systopia.de"
           },
           {
-             "participant_key":"additional_2",
              "participant_fee_amount":100,
+             "participant_key":"additional_partner_1",
              "participant_fee_currency":"EUR",
              "contact_type":"Individual",
              "participant_status":"Registered",
@@ -56,25 +61,26 @@ function civicrm_api3_registration_test($params) {
              ],
              "participant_fee_level":"Partner",
              "partner_of":"additional_1",
-             "first_name":"asdkljkl",
-             "last_name":"jhlhlkjh",
-             "custom_badge":"lkjhlkjhl"
+             "first_name":"Bernd",
+             "last_name":"Brot",
+             "custom_badge":"Omnomnom"
           }
        ],
+       "created_version":"7.x-1.x-dev",
        "organisation":{
           "contact_type":"Organization",
-          "organization_name":"asdasdqw",
-          "phone":"asdasd",
-          "street_address":"igkjg",
-          "supplemental_address_1":"jhlk",
-          "supplemental_address_2":"h;kjh;",
-          "postal_code":"jhgllkjh",
-          "city":"d",
+          "organization_name":"The Small One",
+          "phone":"12345677890",
+          "street_address":"Franzstr. 11",
+          "supplemental_address_1":"",
+          "supplemental_address_2":"",
+          "postal_code":"53111",
+          "city":"Bonn",
           "country":"AL"
        },
        "participant":{
-          "participant_key":"main_participant",
-          "participant_fee_amount":200,
+          "participant_key":"main",
+          "participant_fee_amount":750,
           "participant_fee_currency":"EUR",
           "contact_type":"Individual",
           "participant_status":"Registered",
@@ -82,20 +88,19 @@ function civicrm_api3_registration_test($params) {
              "Main Contact",
              "Participant"
           ],
-          "participant_fee_level":"Youth",
-          "first_name":"asdasd",
-          "last_name":"asdasd",
-          "prefix_id":"2",
-          "custom_Position":"kjhoihl",
+          "participant_fee_level":"International Member",
+          "first_name":"Max",
+          "last_name":"Power",
+          "prefix_id":"3",
+          "custom_Position":"Sebigboss",
           "custom_Languages":[
-             "Spanish",
-             "French",
+             "English",
              "Malaysian"
           ],
-          "custom_represented_organisation":"16742",
-          "custom_badge":"asdsadkajl",
-          "custom_organisation_badge":"hilhkj",
-          "participant_note":"asdasdew",
+          "custom_represented_organisation":"149",
+          "custom_badge":"Maxpower",
+          "custom_organisation_badge":"Sesmolone",
+          "participant_note":"very hungry",
           "email":"endres@systopia.de"
        }
     }', true)

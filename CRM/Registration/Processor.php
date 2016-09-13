@@ -144,15 +144,36 @@ class CRM_Registration_Processor {
 
     // compile contribution data
     $contribution_data = array(
-      'contact_id'            => $main_participant['contact_id'],
-      'trxn_id'               => $this->data['registration_id'],
-      'currency'              => $currency,
-      'total_amount'          => $total,
-      'is_pay_later'          => 1,
-      'payment_instrument_id' => 5, // default (EFT)
-      'financial_type_id'     => 4, // default (Event Fee)
-      'receive_date'          => $this->data['submission_date'],
+      'contact_id'             => $main_participant['contact_id'],
+      'trxn_id'                => $this->data['registration_id'],
+      'currency'               => $currency,
+      'total_amount'           => $total,
+      'financial_type_id'      => 4, // default (Event Fee)
+      'receive_date'           => $this->data['submission_date'],
       );
+
+    // process payment_mode
+    switch ($this->data['payment_mode']) {
+      case 'online':
+        $contribution_data['is_pay_later']           = 0;
+        $contribution_data['payment_instrument_id']  = 1; // Credit Card
+        $contribution_data['contribution_status_id'] = CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name');
+        break;
+
+      case 'offline':
+        $contribution_data['is_pay_later']           = 1;
+        $contribution_data['payment_instrument_id']  = 1; // Credit Card
+        $contribution_data['contribution_status_id'] = CRM_Core_OptionGroup::getValue('contribution_status', 'Pending', 'name');
+        break;
+      
+      default:
+        error_log("Unknown payment mode '{$this->data['payment_mode']}'.");
+      case 'eft':
+        $contribution_data['is_pay_later']           = 1;
+        $contribution_data['payment_instrument_id']  = 5; // EFT
+        $contribution_data['contribution_status_id'] = CRM_Core_OptionGroup::getValue('contribution_status', 'Pending', 'name');
+        break;
+    }
 
     // override if respective values are present
     foreach (self::$contribution_override as $field_name) {
