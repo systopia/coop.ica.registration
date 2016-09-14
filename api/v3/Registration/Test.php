@@ -24,9 +24,9 @@ function civicrm_api3_registration_test($params) {
   //   }', true)
   // ));
 
-  return civicrm_api3_create_success(civicrm_api3('Registration', 'create', json_decode('{
+  $data = json_decode('{
        "submission_date":"20160822094006",
-       "registration_id":"GA2017-999-03",
+       "registration_id":"GA2017-999-08",
        "event_id":"1",
        "payment_mode":"offline",
        "additional_participants":[
@@ -103,8 +103,9 @@ function civicrm_api3_registration_test($params) {
           "participant_note":"very hungry",
           "email":"endres@systopia.de"
        }
-    }', true)
-  ));
+    }', true);
+  $data['registration_id'] = $data['registration_id'] . rand();
+  return civicrm_api3_create_success(civicrm_api3('Registration', 'create', $data));
 }
 
 /**

@@ -12,6 +12,7 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
+define('ICA_EVENT_SUBMISSION_PREFIX',  'GA2017');
 
 /**
  * Will process registration requests coming in via API
@@ -23,9 +24,11 @@ class CRM_Registration_Processor {
 
   protected $data;
   protected $custom_field_map;
+  protected $custom_field_names;
 
   function __construct($data) {
     $this->custom_field_map = array();
+    $this->custom_field_names = NULL;
     $this->updateData($data);
   }
 
@@ -70,6 +73,10 @@ class CRM_Registration_Processor {
     // step 3: add relationships
     
     // TODO: later
+
+
+    // step 4: send out emails
+    $this->sendConfirmationEmail($this->data['participant']);
   }
 
   /**
@@ -231,6 +238,128 @@ class CRM_Registration_Processor {
     civicrm_api3('LineItem', 'create', $line_item_data);
   }
 
+
+
+  /**
+   * compile and send out confirmation email for a received registration
+   */
+  protected function sendConfirmationEmail($participant) {
+    // first: check if we have an email address
+    if (empty($participant['email'])) {
+      error_log("coop.ica.registration: No valid email address submitted.");
+      return;
+    }
+    $email = $participant['email'];
+    $name  = $participant['first_name'] . ' ' . $participant['last_name'];
+
+    // NOW: find the right template
+    $template_pattern = ICA_EVENT_SUBMISSION_PREFIX . ' Registration Confirmation ';
+    $languages = array('FR','ES', 'EN');  // TODO: get from contact
+    $language_used = 'EN';
+    $template = NULL;
+    foreach ($languages as $language) {
+      $templates = civicrm_api3('MessageTemplate', 'get', array('msg_title' => $template_pattern . $language, 'return' => 'id'));
+      if ($templates['count'] == 1) {
+        $template = reset($templates['values']);
+        $language_used = $language;
+        break;
+      }
+    }
+    if (empty($template)) {
+      error_log("coop.ica.registration: Unable to find message template '{$template_pattern}EN'. No email sent.");
+      return;
+    }
+
+    // add all the variables
+    $smarty_variables = array(
+      'registration_id'  => $this->data['registration_id'],
+      'participant'      => $this->renderParticiant($participant, $language_used),
+      'organisation'     => $this->renderParticiant($this->data['organisation'], $language_used),
+      );
+
+    // and send the template via email
+    civicrm_api3('MessageTemplate', 'send', array(
+      'id'              => $template['id'],
+      'contact_id'      => $participant['contact_id'],
+      'to_name'         => $participant['first_name'] . ' ' . $participant['last_name'],
+      'to_email'        => $participant['email'],
+      'from'            => "TODO",
+      'reply_to'        => "todo@to.do",
+      'template_params' => $smarty_variables,
+      // 'pdf_filename'    => 
+      // 'bcc'    => 
+      ));
+  }
+
+
+
+  
+
+  /**
+   * Prepare participant for rendering (in emails, etc.)
+   */
+  protected function renderParticiant($participant, $language) {
+    // first make sure the custom IDs are being replaced
+    $participant = $this->renameCustomFields($participant);
+
+    // resolve country
+    if (!empty($participant['country'])) {
+      // TODO: respect language
+      $country = civicrm_api3('Country', 'getsingle', array('iso_code' => $participant['country']));
+      $participant['country'] = $country['name'];
+    }
+
+    // add/embed partner
+    if (!empty($participant['participant_key'])) {
+      foreach ($this->data['additional_participants'] as $additional_participant) {
+        if (!empty($additional_participant['partner_of']) 
+              && $participant['participant_key'] == $additional_participant['partner_of']) {
+          $participant['partner'] = $this->renameCustomFields($additional_participant);
+        break;
+        }
+      }
+    }
+
+    // resolve roles
+    if (!empty($participant['participant_role'])) {
+      $role_titles = array();
+      foreach ($participant['participant_role'] as $role_id) {
+        $role_titles[] = CRM_Core_OptionGroup::getLabel('participant_role', $role_id, FALSE);
+      }
+      $participant['participant_role'] = $role_titles;
+    }
+
+
+    return $participant;
+  }
+
+  /**
+   * restore custom field IDs to their field name
+   */
+  protected function renameCustomFields($original_array) {
+    if ($this->custom_field_names == NULL) {
+      $this->custom_field_names = array_flip($this->custom_field_map);
+    }
+
+    $new_array = array();
+    foreach ($original_array as $old_key => $value) {
+      if (!empty($this->custom_field_names[$old_key])) {
+        // if this is a custom field with ID, replace by custom field name
+        $new_key = substr($this->custom_field_names[$old_key], 7);
+      } else {
+        $new_key = $old_key;
+      }
+
+      if (is_array($value)) {
+        $new_array[$new_key] = $this->renameCustomFields($value);
+      } else {
+        $new_array[$new_key] = $value;
+      }
+    }
+    
+    return $new_array;
+  }
+
   /**
    * resolve custom fields of format 'custom_myfieldname' to 'custom_43' (which is understood by the API)
    */
@@ -279,6 +408,7 @@ class CRM_Registration_Processor {
     foreach ($field_lookup['values'] as $custom_field) {
       if (!isset($this->custom_field_map["custom_{$custom_field['name']}"])) {
         $this->custom_field_map["custom_{$custom_field['name']}"] = "custom_{$custom_field['id']}";
+        $this->custom_field_names = NULL;
       } elseif ($this->custom_field_map["custom_{$custom_field['name']}"] != "custom_{$custom_field['id']}") {
         throw new Exception("Custom field '{$custom_field['name']}' is ambiguous!", 1);
       }
