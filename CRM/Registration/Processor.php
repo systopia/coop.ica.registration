@@ -270,11 +270,20 @@ class CRM_Registration_Processor {
       return;
     }
 
+    // prepare additional participants
+    $additional_participants = array();
+    foreach ($this->data['additional_participants'] as $additional_participant) {
+      $additional_participants[] = $this->renderParticiant($additional_participant, $language_used);
+    }
+
     // add all the variables
+    list($domainEmailName, $domainEmailAddress) = CRM_Core_BAO_Domain::getNameAndEmail();
+    $emailDomain = CRM_Core_BAO_MailSettings::defaultDomain();
     $smarty_variables = array(
-      'registration_id'  => $this->data['registration_id'],
-      'participant'      => $this->renderParticiant($participant, $language_used),
-      'organisation'     => $this->renderParticiant($this->data['organisation'], $language_used),
+      'registration_id'         => $this->data['registration_id'],
+      'participant'             => $this->renderParticiant($participant, $language_used),
+      'organisation'            => $this->renderParticiant($this->data['organisation'], $language_used),
+      'additional_participants' => $additional_participants,
       );
 
     // and send the template via email
@@ -283,8 +292,8 @@ class CRM_Registration_Processor {
       'contact_id'      => $participant['contact_id'],
       'to_name'         => $participant['first_name'] . ' ' . $participant['last_name'],
       'to_email'        => $participant['email'],
-      'from'            => "TODO",
-      'reply_to'        => "todo@to.do",
+      'from'            => "\"{$domainEmailName}\" <{$domainEmailAddress}>",
+      'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       // 'pdf_filename'    => 
       // 'bcc'    => 
@@ -293,7 +302,7 @@ class CRM_Registration_Processor {
 
 
 
-  
+
 
   /**
    * Prepare participant for rendering (in emails, etc.)

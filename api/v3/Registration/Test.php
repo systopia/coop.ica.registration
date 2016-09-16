@@ -41,6 +41,7 @@ function civicrm_api3_registration_test($params) {
                 "Participant"
              ],
              "participant_fee_level":"International Member",
+             "custom_badge":"Supergirl",
              "first_name":"Super",
              "last_name":"Gal",
              "prefix_id":"1",
