@@ -284,6 +284,7 @@ class CRM_Registration_Processor {
       'participant'             => $this->renderParticiant($participant, $language_used),
       'organisation'            => $this->renderParticiant($this->data['organisation'], $language_used),
       'additional_participants' => $additional_participants,
+      'payment_mode'            => $this->data['payment_mode'],
       );
 
     // and send the template via email
