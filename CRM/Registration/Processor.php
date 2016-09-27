@@ -154,7 +154,7 @@ class CRM_Registration_Processor {
 
     // compile contribution data
     $contribution_data = array(
-      'contact_id'             => $main_participant['contact_id'],
+      'contact_id'             => $this->data['organisation']['contact_id'],
       'trxn_id'                => $this->data['registration_id'],
       'currency'               => $currency,
       'total_amount'           => $total,
