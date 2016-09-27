@@ -78,7 +78,15 @@ function civicrm_api3_registration_test($params) {
           "supplemental_address_2":"",
           "postal_code":"53111",
           "city":"Bonn",
-          "country":"AL"
+          "country":"AL",
+          "billing":{
+            "street_address":"Franzstr. 11",
+            "supplemental_address_1":"",
+            "supplemental_address_2":"",
+            "postal_code":"53111",
+            "city":"Bonn",
+            "country":"AL"
+          }
        },
        "participant":{
           "participant_key":"main",
