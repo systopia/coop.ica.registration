@@ -132,6 +132,9 @@ class CRM_Registration_Processor {
     $result = civicrm_api3('Participant', 'create', $pdata);
     $pdata['participant_id'] = $result['id'];
 
+    // finally: copy/fill data into the contact
+    $this->fillContactData($contact_id, $pdata);
+
     return $pdata;
   }
 
@@ -302,6 +305,42 @@ class CRM_Registration_Processor {
   }
 
 
+  /**
+   * fill certain attributes with the contact base data (not the participant object)
+   */
+  protected function fillContactData($contact_id, $pdata) {
+    // list of attributes that should be filled
+    $fill_values = array(
+      'job_title' => 'job_title',
+      );
+
+    $eligible_data = array();
+    foreach ($fill_values as $contact_field => $submission_field) {
+      if (!empty($pdata[$submission_field])) {
+        $eligible_data[$contact_field] = $pdata[$submission_field];
+      }
+    }
+
+    if (!empty($eligible_data)) {
+      // there is data eligible for submission -> load current values    
+      $contact_data = civicrm_api3('Contact', 'getsingle', array(
+        'id'     => $contact_id,
+        'return' => implode(',', array_keys($eligible_data)),
+        ));
+
+      $update_data = array();
+      foreach ($eligible_data as $contact_field => $value) {
+        if (empty($contact_data[$contact_field])) {
+          $update_data[$contact_field] = $value;
+        }
+      }
+
+      if (!empty($update_data)) {
+        $update_data['id'] = $contact_id;
+        civicrm_api3('Contact', 'create', $update_data);
+      }
+    }
+  }
 
 
 
