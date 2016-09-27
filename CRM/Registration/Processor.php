@@ -25,10 +25,12 @@ class CRM_Registration_Processor {
   protected $data;
   protected $custom_field_map;
   protected $custom_field_names;
+  protected $location_types;
 
   function __construct($data) {
-    $this->custom_field_map = array();
+    $this->custom_field_map   = array();
     $this->custom_field_names = NULL;
+    $this->location_types     = array();
     $this->updateData($data);
   }
 
@@ -69,6 +71,7 @@ class CRM_Registration_Processor {
     } else {
       $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
     }
+    $this->processOrganisation($this->data['organisation']);
 
     // step 3: add relationships
     
@@ -136,6 +139,46 @@ class CRM_Registration_Processor {
     $this->fillContactData($pdata['contact_id'], $pdata);
 
     return $pdata;
+  }
+
+  /**
+   * Process organisation data.
+   *
+   * The organisation was already created/matched by XCM,
+   *  but we want to process the billing address here
+   */
+  protected function processOrganisation($organisation) {
+    
+    // get some stuff
+    $organisation_id         = $organisation['contact_id'];
+    $billing_address         = $organisation['billing'];
+    $billing_location_id     = $this->getLocationTypeID("Billing",     "Billing", "Billing Address location");
+    $old_billing_location_id = $this->getLocationTypeID("Billing_old", "Old Billing", "Formerly used billing address location");
+
+    // first, make sure that there are no other valid billing addresses
+    $current_billing_addresses = civicrm_api3('Address', 'get', array(
+      'contact_id'       => $organisation_id,
+      'location_type_id' => $billing_location_id));
+    if ($current_billing_addresses['count'] > 0) {
+      foreach ($current_billing_addresses['values'] as $current_billing_address) {
+        // TODO: see if it is absolutely identical?
+        // TODO: create diff?
+
+        // change existing billing addresses to "Billing_old"  
+        civicrm_api3('Address', 'create', array(
+          'id'               => $current_billing_address['id'],
+          'is_billing'       => '0',
+          'is_primary'       => '0',
+          'location_type_id' => $old_billing_location_id
+          ));
+      }
+    }
+
+    // now: create the brand new billing address
+    $billing_address['contact_id']       = $organisation_id;
+    $billing_address['location_type_id'] = $billing_location_id;
+    $billing_address['is_billing']       = 1;
+    civicrm_api3('Address', 'create', $billing_address);
   }
 
   /**
@@ -490,6 +533,28 @@ class CRM_Registration_Processor {
 
     // not found
     return NULL;
+  }
+
+  /**
+   * get location type ID, creating type if necessary
+   */
+  protected function getLocationTypeID($name, $display_name, $description) {
+    if ($this->location_types[$name]) {
+      return $this->location_types[$name];
+    }
+
+    $location_type = civicrm_api3('LocationType', 'get', array('name' => $name));
+    if (empty($location_type['id'])) {
+      // we need to create it:
+      $location_type = civicrm_api3('LocationType', 'create', array(
+        'name'         => $name,
+        'display_name' => $display_name,
+        'description'  => $description
+        ));
+    }
+
+    $this->location_types[$name] = (int) $location_type['id'];
+    return $this->location_types[$name];
   }
 
   /**
