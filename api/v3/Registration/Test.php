@@ -29,6 +29,7 @@ function civicrm_api3_registration_test($params) {
        "registration_id":"GA2017-999-08",
        "event_id":"1",
        "payment_mode":"offline",
+       "registration_language":"English",
        "additional_participants":[
           {
              "participant_key":"additional_1",
@@ -45,8 +46,8 @@ function civicrm_api3_registration_test($params) {
              "first_name":"Super",
              "last_name":"Gal",
              "prefix_id":"1",
-             "custom_Position":"Someorg",
-             "custom_Languages":"Malaysian",
+             "job_title":"Someorg",
+             "custom_languages_spoken":"Malaysian",
              "custom_organisation_badge":"Someorg",
              "participant_note":"yeast",
              "email":"endres@systopia.de"
@@ -93,8 +94,8 @@ function civicrm_api3_registration_test($params) {
           "first_name":"Max",
           "last_name":"Power",
           "prefix_id":"3",
-          "custom_Position":"Sebigboss",
-          "custom_Languages":[
+          "job_title":"Sebigboss",
+          "custom_languages_spoken":[
              "English",
              "Malaysian"
           ],

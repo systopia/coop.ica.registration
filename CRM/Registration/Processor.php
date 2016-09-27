@@ -133,7 +133,7 @@ class CRM_Registration_Processor {
     $pdata['participant_id'] = $result['id'];
 
     // finally: copy/fill data into the contact
-    $this->fillContactData($contact_id, $pdata);
+    $this->fillContactData($pdata['contact_id'], $pdata);
 
     return $pdata;
   }
@@ -504,6 +504,9 @@ class CRM_Registration_Processor {
     }
     $this->data['created_version'] = $this->data['created_version'] . ' | ' . $info->version;
 
+    // set communication language for main participant only
+    $this->data['participant']['custom_registration_communication_language'] = $this->data['registration_language'];
+    
     // TODO: more?
   }
 }
