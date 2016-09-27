@@ -222,7 +222,7 @@ class CRM_Registration_Processor {
       'entity_table'      => 'civicrm_participant',
       'entity_id'         => $participant['participant_id'],
       'contribution_id'   => $contribution_id,
-      'label'             => $participant['participant_fee_level'],
+      'label'             => "{$participant['last_name']}, {$participant['first_name']} ({$participant['participant_fee_level']})",
       'qty'               => 1,
       'unit_price'        => $participant['participant_fee_amount'],
       'line_total'        => $participant['participant_fee_amount'],
