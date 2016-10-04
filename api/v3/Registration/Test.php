@@ -72,7 +72,6 @@ function civicrm_api3_registration_test($params) {
        "organisation":{
           "contact_type":"Organization",
           "organization_name":"The Small One",
-          "phone":"12345677890",
           "street_address":"Franzstr. 11",
           "supplemental_address_1":"",
           "supplemental_address_2":"",
@@ -99,6 +98,7 @@ function civicrm_api3_registration_test($params) {
              "Participant"
           ],
           "participant_fee_level":"International Member",
+          "phone":"12345677890",
           "first_name":"Max",
           "last_name":"Power",
           "prefix_id":"3",

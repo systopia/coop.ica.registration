@@ -383,6 +383,28 @@ class CRM_Registration_Processor {
         civicrm_api3('Contact', 'create', $update_data);
       }
     }
+
+    // additionally: process phone (see #3833)
+    if (!empty($pdata['phone'])) {
+      $work_location_id = $this->getLocationTypeID("Work", "Work", "Work location");
+      $phone_type_id    = CRM_Core_OptionGroup::getValue('phone_type', 'Phone', 'label');
+      $request = array(
+        'contact_id'       => $contact_id,
+        'location_type_id' => $work_location_id,
+        'phone_type_id'    => $phone_type_id,
+        );
+
+      // first: find any existing phone of that type
+      $existing_phones = civicrm_api3('Phone', 'get', $request);
+      foreach ($existing_phones['values'] as $phone) {
+        // overwrite any of them...
+        $request['id'] = $phone['id'];
+      }
+
+      // now create/overwrite a new phone
+      $request['phone'] = $pdata['phone'];
+      civicrm_api3('Phone', 'create', $request);
+    }
   }
 
 
