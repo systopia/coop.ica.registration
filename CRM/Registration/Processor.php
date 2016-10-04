@@ -154,6 +154,8 @@ class CRM_Registration_Processor {
     $billing_address         = $organisation['billing'];
     $billing_location_id     = $this->getLocationTypeID("Billing",     "Billing", "Billing Address location");
     $old_billing_location_id = $this->getLocationTypeID("Billing_old", "Old Billing", "Formerly used billing address location");
+    $address_compare_attributes = array('postal_code', 'city', 'street_address', 'supplemental_address_1', 'supplemental_address_2');
+    $address_already_exists  = FALSE;
 
     // first, make sure that there are no other valid billing addresses
     $current_billing_addresses = civicrm_api3('Address', 'get', array(
@@ -161,10 +163,24 @@ class CRM_Registration_Processor {
       'location_type_id' => $billing_location_id));
     if ($current_billing_addresses['count'] > 0) {
       foreach ($current_billing_addresses['values'] as $current_billing_address) {
-        // TODO: see if it is absolutely identical?
-        // TODO: create diff?
+        // check if the address is identical
+        $address_is_identical = TRUE;
+        foreach ($address_compare_attributes as $attribute) {
+          if (  isset($current_billing_address[$attribute]) 
+             && isset($billing_address[$attribute])
+             && strcasecmp($current_billing_address[$attribute], $billing_address[$attribute])) {
+            $address_is_identical = FALSE;
+            break;
+          }
+        }
 
-        // change existing billing addresses to "Billing_old"  
+        // if this address is identical, 
+        if ($address_is_identical) {
+          $address_already_exists = TRUE;
+          continue;
+        }
+
+        // change existing billing addresses to "Billing_old" 
         civicrm_api3('Address', 'create', array(
           'id'               => $current_billing_address['id'],
           'is_billing'       => '0',
@@ -175,10 +191,12 @@ class CRM_Registration_Processor {
     }
 
     // now: create the brand new billing address
-    $billing_address['contact_id']       = $organisation_id;
-    $billing_address['location_type_id'] = $billing_location_id;
-    $billing_address['is_billing']       = 1;
-    civicrm_api3('Address', 'create', $billing_address);
+    if (!$address_already_exists) {
+      $billing_address['contact_id']       = $organisation_id;
+      $billing_address['location_type_id'] = $billing_location_id;
+      $billing_address['is_billing']       = 1;
+      civicrm_api3('Address', 'create', $billing_address);      
+    }
   }
 
   /**
