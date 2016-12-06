@@ -67,9 +67,9 @@ class CRM_Registration_Processor {
 
     // step 2: create contribution + line items
     if (empty($this->data['additional_participants'])) {
-      $this->createRegistrationPayment($this->data['participant']);
+      $contribution = $this->createRegistrationPayment($this->data['participant']);
     } else {
-      $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
+      $contribution = $this->createRegistrationPayment($this->data['participant'], $this->data['additional_participants']);
     }
     $this->processOrganisation($this->data['organisation']);
 
@@ -79,7 +79,7 @@ class CRM_Registration_Processor {
 
 
     // step 4: send out emails
-    $this->sendConfirmationEmail($this->data['participant']);
+    $this->sendConfirmationEmail($this->data['participant'], $contribution);
   }
 
   /**
@@ -267,6 +267,8 @@ class CRM_Registration_Processor {
     // finally remove the default line item
     $original_line_item = civicrm_api3('LineItem', 'getsingle', array('contribution_id' => $contribution['id'], 'entity_table' => 'civicrm_contribution', 'entity_id' => $contribution['id']));
     civicrm_api3('LineItem', 'delete', array('id' => $original_line_item['id']));
+
+    return $contribution;
   }
 
 
@@ -307,7 +309,7 @@ class CRM_Registration_Processor {
   /**
    * compile and send out confirmation email for a received registration
    */
-  protected function sendConfirmationEmail($participant) {
+  protected function sendConfirmationEmail($participant, $contribution) {
     // first: check if we have an email address
     if (empty($participant['email'])) {
       error_log("coop.ica.registration: No valid email address submitted.");
@@ -351,6 +353,13 @@ class CRM_Registration_Processor {
       'payment_mode'            => $this->data['payment_mode'],
       );
 
+    // create an invoice
+    $contact_ids = array($participant['contact_id']);
+    $contribution_ids = array($contribution['id']);
+    $params = array('forPage' => 1, 'output' => 'pdf_invoice');
+    $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
+    $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $this->data['registration_id'] . '.pdf');
+
     // and send the template via email
     civicrm_api3('MessageTemplate', 'send', array(
       'id'              => $template['id'],
@@ -360,7 +369,7 @@ class CRM_Registration_Processor {
       'from'            => "\"{$domainEmailName}\" <{$domainEmailAddress}>",
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
-      // 'pdf_filename'    => 
+      'pdf_filename'    => $invoice_pdf,
       // 'bcc'    => 
       ));
   }
