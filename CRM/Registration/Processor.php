@@ -13,6 +13,7 @@
 +--------------------------------------------------------*/
 
 define('ICA_EVENT_SUBMISSION_PREFIX',  'GA2017');
+define('DOMPDF_ENABLE_AUTOLOAD', FALSE); // apparently CRM/Utils/PDF/Utils.php isn't included
 
 /**
  * Will process registration requests coming in via API
@@ -359,6 +360,9 @@ class CRM_Registration_Processor {
     $params = array('forPage' => 1, 'output' => 'pdf_invoice');
     $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
     $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $this->data['registration_id'] . '.pdf');
+    $attachment   = array('fullPath' => $invoice_pdf,
+                          'mime_type' => 'application/pdf',
+                          'cleanName' => basename($invoice_pdf));
 
     // and send the template via email
     civicrm_api3('MessageTemplate', 'send', array(
@@ -369,7 +373,7 @@ class CRM_Registration_Processor {
       'from'            => "\"{$domainEmailName}\" <{$domainEmailAddress}>",
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
-      'pdf_filename'    => $invoice_pdf,
+      'attachments'     => array($attachment),
       // 'bcc'    => 
       ));
   }
