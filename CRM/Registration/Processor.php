@@ -12,7 +12,7 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
-define('ICA_EVENT_SUBMISSION_PREFIX',  'GA2017');
+define('ICA_EVENT_SUBMISSION_PREFIX', 'GA2017');
 define('DOMPDF_ENABLE_AUTOLOAD', FALSE); // apparently CRM/Utils/PDF/Utils.php isn't included
 
 /**
@@ -370,7 +370,8 @@ class CRM_Registration_Processor {
       'contact_id'      => $participant['contact_id'],
       'to_name'         => $participant['first_name'] . ' ' . $participant['last_name'],
       'to_email'        => $participant['email'],
-      'from'            => "\"{$domainEmailName}\" <{$domainEmailAddress}>",
+      // 'from'            => "\"{$domainEmailName}\" <{$domainEmailAddress}>",
+      'from'            => "\"International Co-operative Alliance\" <secretariat.malaysia2017@ica.coop>",
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       'attachments'     => array($attachment),
