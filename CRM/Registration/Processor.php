@@ -375,7 +375,7 @@ class CRM_Registration_Processor {
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       'attachments'     => array($attachment),
-      // 'bcc'    => 
+      'bcc'             => 'secretariat.malaysia2017@ica.coop',
       ));
   }
 
