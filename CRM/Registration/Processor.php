@@ -391,11 +391,8 @@ class CRM_Registration_Processor {
     // load the contact via the main participant
     //   ... unfortunately the Paticipant API is broken, so we have to do a SQL query
     $registration_id_customfield = civicrm_api3('CustomField', 'getsingle', array('name' => 'registration_id'));
-    error_log("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
     $registration_language_customfield = civicrm_api3('CustomField', 'getsingle', array('name' => 'registration_communication_language'));
-    error_log("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
     $registration_customgroup = civicrm_api3('CustomGroup', 'getsingle', array('id' => $registration_id_customfield['custom_group_id']));
-    error_log("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
     $participant_ids = array();
     $participant_query = CRM_Core_DAO::executeQuery("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
     while ($participant_query->fetch()) {
@@ -420,6 +417,7 @@ class CRM_Registration_Processor {
 
     // render and send a confirmation email
     $smarty_variables = array(
+      'registration_id' => $registration_id,
       'contact' => $contact,
       'contribution' => $contribution);
 
