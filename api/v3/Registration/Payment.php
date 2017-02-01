@@ -38,7 +38,7 @@ function civicrm_api3_registration_payment($params) {
   // set the status ID
   try {
     _civicrm_api3_fix_API_UID();
-    CRM_Registration_Processor::completePayment($params['registration_id'], $params['timestamp'], $contribution, $status_id);
+    CRM_Registration_Processor::completePayment($params['registration_id'], $contribution, $params['timestamp'], $status_id);
   } catch (Exception $e) {
     civicrm_api3_create_error($e->getMessage());
   }
