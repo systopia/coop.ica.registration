@@ -383,7 +383,7 @@ class CRM_Registration_Processor {
       'receive_date'           => $timestamp));
 
     // create an invoice
-    $invoice_pdf = self::generateInvoicePDF($contribution['id'], $participant['contact_id'], $this->data['registration_id']);
+    $invoice_pdf = self::generateInvoicePDF($contribution['id'], $participant['contact_id'], $registration_id);
     $attachment  = array('fullPath' => $invoice_pdf,
                          'mime_type' => 'application/pdf',
                          'cleanName' => basename($invoice_pdf));
