@@ -85,6 +85,7 @@ function civicrm_api3_registration_test($params) {
             "postal_code":"53111",
             "city":"Bonn",
             "country":"AL"
+            "email":"bill@me.org",
           }
        },
        "participant":{

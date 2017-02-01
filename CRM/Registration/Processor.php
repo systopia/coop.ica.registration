@@ -12,7 +12,10 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
-define('ICA_EVENT_SUBMISSION_PREFIX', 'GA2017');
+define('ICA_EVENT_SUBMISSION_PREFIX',   'GA2017');
+define('ICA_EVENT_CONFIRMATION_SENDER', '"International Co-operative Alliance" <secretariat.malaysia2017@ica.coop>');
+define('ICA_EVENT_CONFIRMATION_BCC',    'secretariat.malaysia2017@ica.coop');
+
 define('DOMPDF_ENABLE_AUTOLOAD', FALSE); // apparently CRM/Utils/PDF/Utils.php isn't included
 
 /**
@@ -198,6 +201,36 @@ class CRM_Registration_Processor {
       $billing_address['is_billing']       = 1;
       civicrm_api3('Address', 'create', $billing_address);      
     }
+
+    // process email
+    if (!empty($organisation['billing']['email'])) {
+      $billing_email = $organisation['billing']['email'];
+      $billing_email_exists = FALSE;
+
+      // find existing billing addresses
+      $existing_emails = civicrm_api3('Email', 'get', array(
+        'contact_id'       => $organisation_id,
+        'location_type_id' => $billing_location_id,
+        ));
+      foreach ($existing_emails['values'] as $existing_email) {
+        if ($existing_email['email'] == $billing_email) {
+          $billing_email_exists = TRUE;
+        } else {
+          // bump all old billing emails to billing_old
+          civicrm_api3('Email', 'create', array(
+            'id'               => $existing_email['id'],
+            'location_type_id' => $old_billing_location_id));
+        }
+      }
+
+      // create a new one
+      if (!$billing_email_exists) {
+        civicrm_api3('Email', 'create', array(
+          'contact_id'       => $organisation_id,
+          'email'            => $billing_email,
+          'location_type_id' => $billing_location_id));
+      }
+    }
   }
 
   /**
@@ -346,19 +379,25 @@ class CRM_Registration_Processor {
                          'mime_type' => 'application/pdf',
                          'cleanName' => basename($invoice_pdf));
 
+
     // and send the template via email
-    civicrm_api3('MessageTemplate', 'send', array(
+    $registration_confirmation = array(
       'id'              => $template_id,
       'contact_id'      => $participant['contact_id'],
       'to_name'         => $participant['first_name'] . ' ' . $participant['last_name'],
       'to_email'        => $participant['email'],
-      // 'from'            => "\"{$domainEmailName}\" <{$domainEmailAddress}>",
-      'from'            => "\"International Co-operative Alliance\" <secretariat.malaysia2017@ica.coop>",
+      'from'            => ICA_EVENT_CONFIRMATION_SENDER,
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       'attachments'     => array($attachment),
-      'bcc'             => 'secretariat.malaysia2017@ica.coop',
-      ));
+      'bcc'             => ICA_EVENT_CONFIRMATION_BCC,
+      );
+
+    if (!empty($this->data['organisation']['billing']['email'])) {
+      $registration_confirmation['cc'] = $this->data['organisation']['billing']['email'];
+    }
+
+    civicrm_api3('MessageTemplate', 'send', $registration_confirmation);
   }
 
 
@@ -415,23 +454,42 @@ class CRM_Registration_Processor {
       throw new Exception("Message template not found!");
     }
 
+    // find the billing email
+    $billing_email = NULL;
+    $billing_location_type = civicrm_api3('LocationType', 'get', array('name' => 'Billing'));
+    if (!empty($billing_location_type['id'])) {
+      $billing_emails = civicrm_api3('Email', 'get', array(
+        'contact_id'       => $contribution['contact_id'],
+        'location_type_id' => $billing_location_type['id']));
+      foreach ($billing_emails['values'] as $billing_email_entity) {
+        $billing_email = $billing_email_entity['email'];
+      }
+    }
+
     // render and send a confirmation email
+    $emailDomain = CRM_Core_BAO_MailSettings::defaultDomain();
     $smarty_variables = array(
       'registration_id' => $registration_id,
       'contact' => $contact,
       'contribution' => $contribution);
 
-    civicrm_api3('MessageTemplate', 'send', array(
+    $payment_confirmation = array(
       'id'              => $template_id,
       'contact_id'      => $contact['id'],
       'to_name'         => $contact['first_name'] . ' ' . $contact['last_name'],
       'to_email'        => $contact['email'],
-      'from'            => "\"International Co-operative Alliance\" <secretariat.malaysia2017@ica.coop>",
+      'from'            => ICA_EVENT_CONFIRMATION_SENDER,
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       'attachments'     => array($attachment),
-      'bcc'             => 'secretariat.malaysia2017@ica.coop',
-      ));
+      'bcc'             => ICA_EVENT_CONFIRMATION_BCC,
+      );
+    
+    if (!empty($billing_email)) {
+      $payment_confirmation['cc'] = $billing_email;
+    }
+
+    civicrm_api3('MessageTemplate', 'send', $payment_confirmation);
   }
 
   /**
