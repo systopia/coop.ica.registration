@@ -320,22 +320,8 @@ class CRM_Registration_Processor {
     $name  = $participant['first_name'] . ' ' . $participant['last_name'];
 
     // NOW: find the right template
-    $template_pattern = ICA_EVENT_SUBMISSION_PREFIX . ' Registration Confirmation ';
-    $languages = array('FR','ES', 'EN');  // TODO: get from contact
-    $language_used = 'EN';
-    $template = NULL;
-    foreach ($languages as $language) {
-      $templates = civicrm_api3('MessageTemplate', 'get', array('msg_title' => $template_pattern . $language, 'return' => 'id'));
-      if ($templates['count'] == 1) {
-        $template = reset($templates['values']);
-        $language_used = $language;
-        break;
-      }
-    }
-    if (empty($template)) {
-      error_log("coop.ica.registration: Unable to find message template '{$template_pattern}EN'. No email sent.");
-      return;
-    }
+    $template_id = self::loadTemplate(ICA_EVENT_SUBMISSION_PREFIX . ' Registration Confirmation ', $this->data['registration_language']);
+    if (empty($template_id)) return;
 
     // prepare additional participants
     $additional_participants = array();
@@ -355,18 +341,14 @@ class CRM_Registration_Processor {
       );
 
     // create an invoice
-    $contact_ids = array($participant['contact_id']);
-    $contribution_ids = array($contribution['id']);
-    $params = array('forPage' => 1, 'output' => 'pdf_invoice');
-    $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
-    $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $this->data['registration_id'] . '.pdf');
-    $attachment   = array('fullPath' => $invoice_pdf,
-                          'mime_type' => 'application/pdf',
-                          'cleanName' => basename($invoice_pdf));
+    $invoice_pdf = self::generateInvoicePDF($contribution['id'], $participant['contact_id'], $this->data['registration_id']);
+    $attachment  = array('fullPath' => $invoice_pdf,
+                         'mime_type' => 'application/pdf',
+                         'cleanName' => basename($invoice_pdf));
 
     // and send the template via email
     civicrm_api3('MessageTemplate', 'send', array(
-      'id'              => $template['id'],
+      'id'              => $template_id,
       'contact_id'      => $participant['contact_id'],
       'to_name'         => $participant['first_name'] . ' ' . $participant['last_name'],
       'to_email'        => $participant['email'],
@@ -379,6 +361,59 @@ class CRM_Registration_Processor {
       ));
   }
 
+
+
+  /**
+   * static method to complete a pending online contribution
+   */
+  public static function completePayment($registration_id, $contribution, $timestamp, $requested_status_id = 1) {
+    if ($requested_status_id != 1) {
+      throw new Exception("Contribution can currently only be set to 'Completed'");
+    }
+
+    $status_inprogress = CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name');
+    if ($contribution['contribution_status_id'] != $status_inprogress) {
+      throw new Exception("Contribution {$contribution['id']} not in expected status 'In Progress'");
+    }
+
+    // mark contribution as completed
+    civicrm_api3('Contribution', 'create', array(
+      'id'                     => $contribution['id'], 
+      'contribution_status_id' => 1,
+      'receive_date'           => $timestamp));
+
+    // create an invoice
+    $invoice_pdf = self::generateInvoicePDF($contribution['id'], $participant['contact_id'], $this->data['registration_id']);
+    $attachment  = array('fullPath' => $invoice_pdf,
+                         'mime_type' => 'application/pdf',
+                         'cleanName' => basename($invoice_pdf));
+
+    // load the contact
+    $contact = civicrm_api3('Contact', 'getsingle', array('id' => $contribution['contact_id']));
+
+    // find the right email template
+    $template_id = self::loadTemplate(ICA_EVENT_SUBMISSION_PREFIX . ' Payment Completion ', 'EN');
+    if (!$template_id) {
+      throw new Exception("Message template not found!");
+    }
+
+    // render and send a confirmation email
+    $smarty_variables = array(
+      'contact' => $contact,
+      'contribution' => $contribution);
+
+    civicrm_api3('MessageTemplate', 'send', array(
+      'id'              => $template_id,
+      'contact_id'      => $contact['id'],
+      'to_name'         => $contact['first_name'] . ' ' . $contact['last_name'],
+      'to_email'        => $contact['email'],
+      'from'            => "\"International Co-operative Alliance\" <secretariat.malaysia2017@ica.coop>",
+      'reply_to'        => "do-not-reply@$emailDomain",
+      'template_params' => $smarty_variables,
+      'attachments'     => array($attachment),
+      'bcc'             => 'secretariat.malaysia2017@ica.coop',
+      ));
+  }
 
   /**
    * fill certain attributes with the contact base data (not the participant object)
@@ -611,6 +646,7 @@ class CRM_Registration_Processor {
     return $this->location_types[$name];
   }
 
+
   /**
    * add some extra data
    */
@@ -627,5 +663,69 @@ class CRM_Registration_Processor {
     $this->data['participant']['custom_registration_communication_language'] = $this->data['registration_language'];
     
     // TODO: more?
+  }
+
+
+  /**
+   * helper function to generate an invoice PDF
+   */
+  protected static function generateInvoicePDF($contribution_id, $contact_id, $file_name) {
+    $contact_ids = array($contact_id);
+    $contribution_ids = array($contribution_id);
+    $params = array('forPage' => 1, 'output' => 'pdf_invoice');
+    $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
+    $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $file_name . '.pdf');
+    return $invoice_pdf;
+  }
+
+  /**
+   * helper function to find the right template
+   */
+  protected static function loadTemplate($template_pattern, $language) {
+    // resolve langage
+    switch ($language) {
+      case 'French':
+      case 'Français':
+      case 'FR':
+        $language = 'FR';
+        break;
+      
+      case 'Spanish':
+      case 'Español':
+      case 'ES':
+        $language = 'ES';
+        break;
+
+      case 'German':
+      case 'Deutsch':
+      case 'DE':
+        $language = 'DE';
+        break;
+
+      default:
+      case 'EN':
+      case 'English':
+        $language = 'EN';
+        break;
+    }
+
+    // try to load in the requested language
+    $templates = civicrm_api3('MessageTemplate', 'get', array(
+      'msg_title' => $template_pattern . $language, 
+      'return' => 'id'));
+
+    // if not found, try to load in english
+    if (empty($templates['id'])) {
+      $templates = civicrm_api3('MessageTemplate', 'get', array(
+        'msg_title' => $template_pattern . 'EN', 
+        'return' => 'id'));
+    }
+
+    if (empty($templates['id'])) {
+      error_log("coop.ica.registration: Unable to find message template '{$template_pattern}EN'. No email sent.");      
+      return NULL;
+    } else {
+      return $templates['id'];
+    }
   }
 }

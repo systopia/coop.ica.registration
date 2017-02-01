@@ -35,14 +35,10 @@ function civicrm_api3_registration_payment($params) {
 
   // get the contribution (throws exception if not found)
   $contribution = civicrm_api3('Contribution', 'getsingle', array('trxn_id' => $params['registration_id']));
-
   // set the status ID
   try {
     _civicrm_api3_fix_API_UID();
-    civicrm_api3('Contribution', 'create', array(
-      'id'                     => $contribution['id'], 
-      'contribution_status_id' => $status_id,
-      'receive_date'           => $params['timestamp']));    
+    CRM_Registration_Processor::completePayment($params['registration_id'], $params['timestamp'], $contribution, $status_id);
   } catch (Exception $e) {
     civicrm_api3_create_error($e->getMessage());
   }
