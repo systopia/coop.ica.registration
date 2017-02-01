@@ -388,11 +388,32 @@ class CRM_Registration_Processor {
                          'mime_type' => 'application/pdf',
                          'cleanName' => basename($invoice_pdf));
 
-    // load the contact
-    $contact = civicrm_api3('Contact', 'getsingle', array('id' => $contribution['contact_id']));
+    // load the contact via the main participant
+    //   ... unfortunately the Paticipant API is broken, so we have to do a SQL query
+    $registration_id_customfield = civicrm_api3('CustomField', 'getsingle', array('name' => 'registration_id'));
+    error_log("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
+    $registration_language_customfield = civicrm_api3('CustomField', 'getsingle', array('name' => 'registration_communication_language'));
+    error_log("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
+    $registration_customgroup = civicrm_api3('CustomGroup', 'getsingle', array('id' => $registration_id_customfield['custom_group_id']));
+    error_log("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
+    $participant_ids = array();
+    $participant_query = CRM_Core_DAO::executeQuery("SELECT `entity_id` FROM `{$registration_customgroup['table_name']}` WHERE `{$registration_id_customfield['column_name']}` = '{$registration_id}';");
+    while ($participant_query->fetch()) {
+      $participant_ids[] = $participant_query->entity_id;
+    }
+    $participants = civicrm_api3('Participant', 'get', array(
+      'role_id' => 'Main Contact',
+      'id' => array('IN' => $participant_ids),
+      ));
+    if (empty($participants['id'])) {
+      throw new Exception("Main contact for registration not found!");
+    }
+    $participant = reset($participants['values']);
+    $contact = civicrm_api3('Contact', 'getsingle', array('id' => $participant['contact_id']));
 
     // find the right email template
-    $template_id = self::loadTemplate(ICA_EVENT_SUBMISSION_PREFIX . ' Payment Completion ', 'EN');
+    $registration_language = CRM_Utils_Array::value("custom_{$registration_language_customfield['id']}", $participant, 'EN');
+    $template_id = self::loadTemplate(ICA_EVENT_SUBMISSION_PREFIX . ' Payment Completion ', $registration_language);
     if (!$template_id) {
       throw new Exception("Message template not found!");
     }
