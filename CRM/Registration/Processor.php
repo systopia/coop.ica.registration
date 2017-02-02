@@ -219,6 +219,7 @@ class CRM_Registration_Processor {
           // bump all old billing emails to billing_old
           civicrm_api3('Email', 'create', array(
             'id'               => $existing_email['id'],
+            'email'            => $existing_email['email'],
             'location_type_id' => $old_billing_location_id));
         }
       }
