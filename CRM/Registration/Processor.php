@@ -584,13 +584,20 @@ class CRM_Registration_Processor {
 
     // merge the two lists
     $combined_langugages = array_unique(array_merge($languages_on_record, $languages_submitted));
+
+    // remove empty strings (happens)
+    $empty_entry = array_search('', $combined_langugages);
+    if (!($empty_entry===NULL)) {
+      unset($combined_langugages[$empty_entry]);
+    }
+
     if ($combined_langugages != $languages_on_record) {
       // store the merged list
       try {
         civicrm_api3('Contact', 'create', array(
           'id'          => $contact_id,
           $custom_field => $combined_langugages));
-      } catch (Exception $e) {
+      } catch (API_Exception $e) {
         error_log("coop.ica.registration: error while updating languages: " . $e->getMessage());
       }
     }
