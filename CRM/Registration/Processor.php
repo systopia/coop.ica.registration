@@ -562,9 +562,13 @@ class CRM_Registration_Processor {
   /**
    * add the languages spoken according to the registration to the languages stored with the contact
    */
-  protected function updateContactLanguages($contact_id, $languages_submitted = array()) {
+  protected function updateContactLanguages($contact_id, $languages_submitted = array()) {    
     error_log("$contact_id " . json_encode($languages_submitted));
     if (empty($contact_id)) return;
+
+    if (!is_array($languages_submitted)) {
+      $languages_submitted = array($languages_submitted);
+    }
 
     // load languages from contact
     $custom_field = 'custom_' . ICA_LANGUAGES_CUSTOM_FIELD;
@@ -574,6 +578,11 @@ class CRM_Registration_Processor {
       ));
     $contact_data = reset($contact_data['values']);
     $languages_on_record = $contact_data[$custom_field];
+
+    if (!is_array($languages_on_record)) {
+      $languages_on_record = array($languages_on_record);
+    }
+
     error_log("RECORD " .json_encode($languages_on_record));
 
     // merge the two lists
