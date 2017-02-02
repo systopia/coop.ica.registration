@@ -15,6 +15,7 @@
 define('ICA_EVENT_SUBMISSION_PREFIX',   'GA2017');
 define('ICA_EVENT_CONFIRMATION_SENDER', '"International Co-operative Alliance" <secretariat.malaysia2017@ica.coop>');
 define('ICA_EVENT_CONFIRMATION_BCC',    'secretariat.malaysia2017@ica.coop');
+define('ICA_LANGUAGES_CUSTOM_FIELD',    '7');
 
 define('DOMPDF_ENABLE_AUTOLOAD', FALSE); // apparently CRM/Utils/PDF/Utils.php isn't included
 
@@ -116,6 +117,9 @@ class CRM_Registration_Processor {
         $pdata['custom_partner_of'] = $partner_of['contact_id'];
       }
     }
+
+    // copy languages to contact (https://projekte.systopia.de/redmine/issues/3787)
+    $this->updateContactLanguages($pdata['contact_id'], $pdata['custom_languages_spoken']);
 
     // resolve custom fields
     $this->resolveCustomFields($pdata);
@@ -554,6 +558,38 @@ class CRM_Registration_Processor {
     }
   }
 
+
+  /**
+   * add the languages spoken according to the registration to the languages stored with the contact
+   */
+  protected function updateContactLanguages($contact_id, $languages_submitted = array()) {
+    error_log("$contact_id " . json_encode($languages_submitted));
+    if (empty($contact_id)) return;
+
+    // load languages from contact
+    $custom_field = 'custom_' . ICA_LANGUAGES_CUSTOM_FIELD;
+    $contact_data = civicrm_api3('Contact', 'get', array(
+      'id'     => $contact_id,
+      'return' => $custom_field,
+      ));
+    $contact_data = reset($contact_data['values']);
+    $languages_on_record = $contact_data[$custom_field];
+    error_log("RECORD " .json_encode($languages_on_record));
+
+    // merge the two lists
+    $combined_langugages = array_unique(array_merge($languages_on_record, $languages_submitted));
+    error_log("combined " .json_encode($languages_on_record));
+    if ($combined_langugages != $languages_on_record) {
+      // store the merged list
+      try {
+        civicrm_api3('Contact', 'create', array(
+          'id'          => $contact_id,
+          $custom_field => $combined_langugages));
+      } catch (Exception $e) {
+        error_log("FEHLER!");
+      }
+    }
+  }
 
 
   /**
