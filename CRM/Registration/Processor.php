@@ -563,12 +563,12 @@ class CRM_Registration_Processor {
    * add the languages spoken according to the registration to the languages stored with the contact
    */
   protected function updateContactLanguages($contact_id, $languages_submitted = array()) {    
-    error_log("$contact_id " . json_encode($languages_submitted));
     if (empty($contact_id)) return;
 
     if (!is_array($languages_submitted)) {
       $languages_submitted = array($languages_submitted);
     }
+    error_log("$contact_id " . json_encode($languages_submitted));
 
     // load languages from contact
     $custom_field = 'custom_' . ICA_LANGUAGES_CUSTOM_FIELD;
@@ -587,9 +587,10 @@ class CRM_Registration_Processor {
 
     // merge the two lists
     $combined_langugages = array_unique(array_merge($languages_on_record, $languages_submitted));
-    error_log("combined " .json_encode($languages_on_record));
+    error_log("combined " .json_encode($combined_langugages));
     if ($combined_langugages != $languages_on_record) {
       // store the merged list
+      error_log("STORE!");
       try {
         civicrm_api3('Contact', 'create', array(
           'id'          => $contact_id,
