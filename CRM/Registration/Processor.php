@@ -568,7 +568,6 @@ class CRM_Registration_Processor {
     if (!is_array($languages_submitted)) {
       $languages_submitted = array($languages_submitted);
     }
-    error_log("$contact_id " . json_encode($languages_submitted));
 
     // load languages from contact
     $custom_field = 'custom_' . ICA_LANGUAGES_CUSTOM_FIELD;
@@ -583,20 +582,16 @@ class CRM_Registration_Processor {
       $languages_on_record = array($languages_on_record);
     }
 
-    error_log("RECORD " .json_encode($languages_on_record));
-
     // merge the two lists
     $combined_langugages = array_unique(array_merge($languages_on_record, $languages_submitted));
-    error_log("combined " .json_encode($combined_langugages));
     if ($combined_langugages != $languages_on_record) {
       // store the merged list
-      error_log("STORE!");
       try {
         civicrm_api3('Contact', 'create', array(
           'id'          => $contact_id,
           $custom_field => $combined_langugages));
       } catch (Exception $e) {
-        error_log("FEHLER!");
+        error_log("coop.ica.registration: error while updating languages: " . $e->getMessage());
       }
     }
   }
