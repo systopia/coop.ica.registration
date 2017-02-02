@@ -91,10 +91,12 @@ class CRM_Registration_Processor {
    */
   protected function createParticipant(&$pdata, $master_participant = NULL) {
     // derive some values
-    $pdata['custom_registration_id'] = $this->data['registration_id'];
-    $pdata['register_date']          = $this->data['submission_date'];
-    $pdata['event_id']               = $this->data['event_id'];
-    $pdata['custom_created_version'] = $this->data['created_version'];
+    $pdata['custom_registration_id']   = $this->data['registration_id'];
+    $pdata['register_date']            = $this->data['submission_date'];
+    $pdata['event_id']                 = $this->data['event_id'];
+    $pdata['custom_created_version']   = $this->data['created_version'];
+    $pdata['custom_validation_status'] = 1;  // pending
+
     if ($master_participant) {
       $pdata['registered_by_id']    = $master_participant['participant_id'];
       $pdata['custom_main_contact'] = $master_participant['contact_id'];
