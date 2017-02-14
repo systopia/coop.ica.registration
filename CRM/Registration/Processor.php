@@ -322,6 +322,8 @@ class CRM_Registration_Processor {
    * create a registration line item
    */
   protected function createRegistrationLineItem($participant, $contribution_id, $financial_type_id) {
+    if (empty($participant['participant_fee_amount'])) return;
+    
     $line_item_data = array(
       'entity_table'      => 'civicrm_participant',
       'entity_id'         => $participant['participant_id'],
