@@ -26,7 +26,7 @@ function civicrm_api3_registration_test($params) {
 
   $data = json_decode('{
        "submission_date":"20160822094006",
-       "registration_id":"GA2017-999-08",
+       "registration_id":"GA2017-999-09",
        "event_id":"1",
        "payment_mode":"offline",
        "registration_language":"English",
@@ -84,8 +84,8 @@ function civicrm_api3_registration_test($params) {
             "supplemental_address_2":"",
             "postal_code":"53111",
             "city":"Bonn",
-            "country":"AL"
-            "email":"bill@me.org",
+            "country":"AL",
+            "email":"bill@me.org"
           }
        },
        "participant":{

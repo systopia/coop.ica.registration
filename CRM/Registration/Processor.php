@@ -309,7 +309,7 @@ class CRM_Registration_Processor {
     $original_line_item = civicrm_api3('LineItem', 'getsingle', array('contribution_id' => $contribution['id'], 'entity_table' => 'civicrm_contribution', 'entity_id' => $contribution['id']));
     civicrm_api3('LineItem', 'delete', array('id' => $original_line_item['id']));
 
-    return $contribution;
+    return reset($contribution['values']);
   }
 
 
@@ -383,7 +383,7 @@ class CRM_Registration_Processor {
       );
 
     // create an invoice
-    $invoice_pdf = self::generateInvoicePDF($contribution['id'], $participant['contact_id'], $this->data['registration_id']);
+    $invoice_pdf = $this->generateInvoicePDF($contribution, $participant['contact_id'], $this->data['registration_id']);
     $attachment  = array('fullPath' => $invoice_pdf,
                          'mime_type' => 'application/pdf',
                          'cleanName' => basename($invoice_pdf));
@@ -431,7 +431,7 @@ class CRM_Registration_Processor {
       'receive_date'           => $timestamp));
 
     // create an invoice
-    $invoice_pdf = self::generateInvoicePDF($contribution['id'], $participant['contact_id'], $registration_id);
+    $invoice_pdf = $this->generateInvoicePDF($contribution, $participant['contact_id'], $registration_id);
     $attachment  = array('fullPath' => $invoice_pdf,
                          'mime_type' => 'application/pdf',
                          'cleanName' => basename($invoice_pdf));
@@ -799,13 +799,124 @@ class CRM_Registration_Processor {
   /**
    * helper function to generate an invoice PDF
    */
-  protected static function generateInvoicePDF($contribution_id, $contact_id, $file_name) {
-    $contact_ids = array($contact_id);
-    $contribution_ids = array($contribution_id);
-    $params = array('forPage' => 1, 'output' => 'pdf_invoice');
-    $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
-    $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $file_name . '.pdf');
-    return $invoice_pdf;
+  protected function generateInvoicePDF($contribution, $contact_id, $file_name) {
+    if ($this->isFinalInvoice($contribution)) {
+      // GENERATE INVOICE
+      $contact_ids = array($contact_id);
+      $contribution_ids = array($contribution['id']);
+      $params = array('forPage' => 1, 'output' => 'pdf_invoice');
+      $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
+      $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $file_name . '.pdf');
+      return $invoice_pdf;
+
+    } else {
+      // GENERATE PRO FORMA INVOICE
+
+      // find the template
+      $template_query = CRM_Core_DAO::executeQuery("
+          SELECT msg_html, pdf_format_id
+            FROM civicrm_msg_template
+            LEFT JOIN civicrm_option_value ON workflow_id = civicrm_option_value.id
+            LEFT JOIN civicrm_option_group ON civicrm_option_value.option_group_id = civicrm_option_group.id
+          WHERE civicrm_msg_template.is_default = 1
+            AND civicrm_option_group.name = 'msg_tpl_workflow_contribution'
+            AND civicrm_option_value.label = 'Contribution Invoice Receipt'
+          ORDER BY civicrm_msg_template.id DESC
+          LIMIT 1;");
+      if ($template_query->fetch()) {
+        // prepare renderer
+        $config = CRM_Core_Config::singleton();
+        $smarty = CRM_Core_Smarty::singleton();
+        $smarty->assign('resourceBase', $config->userFrameworkResourceURL);
+
+        // add contact
+        $contact = civicrm_api3('Contact', 'getsingle', array('id' => $contact_id));
+        $smarty->assign('display_name', $contact['display_name']);
+        $smarty->assign('organization_name', $contact['organization_name']);
+
+        // add registrant billing address
+        $address_query = civicrm_api3('Address', 'get', array('contact_id' => $contact_id, 'location_type_id' => 'Billing'));
+        foreach ($address_query['values'] as $address) {
+          foreach ($address as $key => $value) {
+            if ($key == 'country_id') {
+              $smarty->assign('country', CRM_Core_PseudoConstant::country($value));
+            } else {
+              $smarty->assign($key, $value);
+            }
+          }
+          break;
+        }
+
+        // add ICA address data
+        $domain = CRM_Core_BAO_Domain::getDomain();
+        $locationDefaults = CRM_Core_BAO_Location::getValues(array('contact_id' => $domain->contact_id));
+        $smarty->assign('domain_organization', $domain->name);
+        $smarty->assign('domain_email', CRM_Utils_Array::value('email', CRM_Utils_Array::value('1', $locationDefaults['email'])));
+        $smarty->assign('domain_phone', CRM_Utils_Array::value('phone', CRM_Utils_Array::value('1', $locationDefaults['phone'])));
+        if (!empty($locationDefaults['address'][1])) {
+          $ica_address = $locationDefaults['address'][1];
+          foreach ($ica_address as $key => $value) {
+            if ($key == 'country_id') {
+              $smarty->assign('domain_country', CRM_Core_PseudoConstant::country($value));
+            } else {
+              $smarty->assign("domain_{$key}", $value);
+            }
+          }
+        }
+
+        // add contribution data
+        foreach ($contribution as $key => $value) {
+          $smarty->assign($key, $value);
+        }
+        $smarty->assign('contribution', $contribution);
+        $smarty->assign('amount', $contribution['total_amount']);
+        $smarty->assign('amountDue', $contribution['total_amount']);
+        $smarty->assign('invoice_date', date('F j, Y'));
+        // $smarty->assign('dueDate', date('F j, Y', strtotime("+21 days")));
+
+        // add some random stuff
+        $smarty->assign('invoice_id', 'PRO FORMA');
+        $smarty->assign('refundedStatusId', CRM_Core_OptionGroup::getValue('contribution_status', 'Refunded', 'name'));
+        $smarty->assign('cancelledStatusId', CRM_Core_OptionGroup::getValue('contribution_status', 'Cancelled', 'name'));
+
+        // retreiving the subtotal and sum of same tax_rate
+        $dataArray = array();
+        $subTotal = 0;
+        $lineItems = CRM_Price_BAO_LineItem::getLineItems($contribution['id'], 'contribution', NULL, TRUE, TRUE);
+        foreach ($lineItems as $entity_id => $taxRate) {
+          if (isset($dataArray[(string) $taxRate['tax_rate']])) {
+            $dataArray[(string) $taxRate['tax_rate']] = $dataArray[(string) $taxRate['tax_rate']] + CRM_Utils_Array::value('tax_amount', $taxRate);
+          } else {
+            $dataArray[(string) $taxRate['tax_rate']] = CRM_Utils_Array::value('tax_amount', $taxRate);
+          }
+          $subTotal += CRM_Utils_Array::value('subTotal', $taxRate);
+        }
+        $smarty->assign('subTotal', $subTotal);
+        $smarty->assign('lineItem', $lineItems);
+
+
+        // FINALLY: generate invoice
+        $pf_invoice_html = $smarty->fetch("string:" . $template_query->msg_html);
+        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, "{$contribution['trxn_id']}.pdf", TRUE, $template_query->pdf_format_id);
+        $pdf_filename    = tempnam(sys_get_temp_dir(), 'PF_INV_');
+        file_put_contents($pdf_filename, $pf_invoice_pdf);
+        return $pdf_filename;
+      
+      } else {
+        // template NOT found!
+        error_log("coop.ica.registration: Unable to find invoice template. No pro forma invoice PDF generated.");
+        return NULL;
+      }
+    }
+  }
+
+  /**
+   * Verify id this contribution gets a final invoice
+   */
+  protected static function isFinalInvoice($contribution) {
+    return (   $contribution['contribution_status_id'] != 2
+            && $contribution['contribution_status_id'] != 5
+            && $contribution['contribution_status_id'] != 8);
   }
 
   /**
@@ -852,7 +963,7 @@ class CRM_Registration_Processor {
     }
 
     if (empty($templates['id'])) {
-      error_log("coop.ica.registration: Unable to find message template '{$template_pattern}EN'. No email sent.");      
+      error_log("coop.ica.registration: Unable to find message template '{$template_pattern}EN'. No email sent.");
       return NULL;
     } else {
       return $templates['id'];
