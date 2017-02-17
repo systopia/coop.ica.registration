@@ -830,12 +830,12 @@ class CRM_Registration_Processor {
         $smarty->assign('resourceBase', $config->userFrameworkResourceURL);
 
         // add contact
-        $contact = civicrm_api3('Contact', 'getsingle', array('id' => $contact_id));
+        $contact = civicrm_api3('Contact', 'getsingle', array('id' => $contribution['contact_id']));
         $smarty->assign('display_name', $contact['display_name']);
         $smarty->assign('organization_name', $contact['organization_name']);
 
         // add registrant billing address
-        $address_query = civicrm_api3('Address', 'get', array('contact_id' => $contact_id, 'location_type_id' => 'Billing'));
+        $address_query = civicrm_api3('Address', 'get', array('contact_id' => $contribution['contact_id'], 'location_type_id' => 'Billing'));
         foreach ($address_query['values'] as $address) {
           foreach ($address as $key => $value) {
             if ($key == 'country_id') {
@@ -897,8 +897,9 @@ class CRM_Registration_Processor {
 
         // FINALLY: generate invoice
         $pf_invoice_html = $smarty->fetch("string:" . $template_query->msg_html);
-        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, "{$contribution['trxn_id']}.pdf", TRUE, $template_query->pdf_format_id);
-        $pdf_filename    = tempnam(sys_get_temp_dir(), 'PF_INV_');
+        $pdf_filename    = "{$contribution['trxn_id']}.pdf";
+        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, $pf_invoice_pdf, TRUE, $template_query->pdf_format_id);
+        // $pdf_filename    = tempnam(sys_get_temp_dir(), 'PF_INV_');
         file_put_contents($pdf_filename, $pf_invoice_pdf);
         return $pdf_filename;
       
