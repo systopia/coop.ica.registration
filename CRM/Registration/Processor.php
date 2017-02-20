@@ -430,6 +430,10 @@ class CRM_Registration_Processor {
       'contribution_status_id' => 1,
       'receive_date'           => $timestamp));
 
+    // update contribution data
+    $contribution['contribution_status_id'] = 1;
+    $contribution['receive_date'] = $timestamp;
+
     // create an invoice
     $invoice_pdf = $this->generateInvoicePDF($contribution, $participant['contact_id'], $registration_id);
     $attachment  = array('fullPath' => $invoice_pdf,
