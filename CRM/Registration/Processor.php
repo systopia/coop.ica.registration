@@ -414,7 +414,7 @@ class CRM_Registration_Processor {
   /**
    * static method to complete a pending online contribution
    */
-  public static function completePayment($registration_id, $contribution, $timestamp, $requested_status_id = 1) {
+  public function completePayment($registration_id, $contribution, $timestamp, $requested_status_id = 1) {
     if ($requested_status_id != 1) {
       throw new Exception("Contribution can currently only be set to 'Completed'");
     }
