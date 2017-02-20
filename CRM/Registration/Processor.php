@@ -879,7 +879,7 @@ class CRM_Registration_Processor {
         // $smarty->assign('dueDate', date('F j, Y', strtotime("+21 days")));
 
         // add some random stuff
-        $smarty->assign('invoice_id', 'PRO FORMA');
+        $smarty->assign('invoice_id', '');
         $smarty->assign('refundedStatusId', CRM_Core_OptionGroup::getValue('contribution_status', 'Refunded', 'name'));
         $smarty->assign('cancelledStatusId', CRM_Core_OptionGroup::getValue('contribution_status', 'Cancelled', 'name'));
 
