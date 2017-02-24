@@ -9,13 +9,13 @@
     <email>endres@systopia.de</email>
   </maintainer>
   <urls>
-    <url desc="Main Extension Page">http://systopia.de</url>
-    <url desc="Documentation">http://systopia.de</url>
-    <url desc="Support">http://systopia.de</url>
+    <url desc="Main Extension Page">https://github.com/systopia/coop.ica.registration</url>
+    <url desc="Documentation">https://github.com/systopia/coop.ica.registration</url>
+    <url desc="Support">https://github.com/systopia/coop.ica.registration/issues</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
-  <releaseDate>2017-02-17</releaseDate>
-  <version>0.9</version>
+  <releaseDate>2017-02-24</releaseDate>
+  <version>0.9.1</version>
   <develStage>dev</develStage>
   <compatibility>
     <ver>4.6</ver>

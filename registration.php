@@ -14,6 +14,104 @@
 
 require_once 'registration.civix.php';
 
+define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2017-');
+
+/**
+ * Implements hook_civicrm_invoiceNumber().
+ */
+function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
+  // only interfere with event fee contributions
+  if ($contributionBAO->financial_type_id != 4) {
+    return;
+  }
+
+  if ($contributionBAO->invoice_id) {
+    // the invoice ID is already set
+    $invoice_id = $contributionBAO->invoice_id;
+  } else {
+    $prefix = EVENT_FEE_INVOICE_PREFIX;
+    $counter_position = strlen($prefix) + 1;
+    $last_id = CRM_Core_DAO::singleValueQuery("
+      SELECT MAX(CAST(SUBSTRING(`invoice_id` FROM {$counter_position}) AS UNSIGNED)) 
+      FROM `civicrm_contribution` 
+      WHERE `invoice_id` REGEXP '{$prefix}[0-9]+$';");
+    if ($last_id) {
+      $invoice_id = $prefix . ($last_id + 1);
+    } else {
+      $invoice_id = "{$prefix}1";
+    }
+  }  
+}
+
+/**
+ * Implements hook_civicrm_invoiceParams().
+ */
+function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
+  // find and add billing address
+  $billing_address = NULL;
+
+  // first try with type Billing
+  $addresses = civicrm_api3('Address', 'get', array(
+    'contact_id'       => $contributionBAO->contact_id,
+    'location_type_id' => 'Billing',
+    ));
+  foreach ($addresses['values'] as $address) {
+    $billing_address = $address;
+    if ($address['is_billing'] || $address['is_primary']) {
+      break;
+    }
+  }
+
+  // then try is_billing
+  if (!$billing_address) {
+    $addresses = civicrm_api3('Address', 'get', array(
+      'contact_id' => $contributionBAO->contact_id,
+      'is_billing' => 1,
+      ));
+    foreach ($addresses['values'] as $address) {
+      $billing_address = $address;
+      if ($address['is_primary']) {
+        break;
+      }
+    }
+  }
+
+  // if still empty, try others
+  if (!$billing_address) {
+    $addresses = civicrm_api3('Address', 'get', array(
+      'contact_id' => $contributionBAO->contact_id,
+      'is_billing' => 0,
+      ));
+    foreach ($addresses['values'] as $address) {
+      $billing_address = $address;
+      if ($address['is_primary']) {
+        break;
+      }
+    }
+  }
+
+  // set the parameters
+  if ($billing_address) {
+    // look up some stuff
+    if (!empty($billing_address['state_province_id'])) {
+      $billing_address['stateProvinceAbbreviation'] = CRM_Core_PseudoConstant::stateProvinceAbbreviation($billing_address['state_province_id']);
+    }
+    if (!empty($billing_address['country_id'])) {
+      $billing_address['country'] = CRM_Core_PseudoConstant::country($billing_address['country_id']);
+    }
+
+    $tplParams['street_address']            = CRM_Utils_Array::value('street_address', $billing_address, '');
+    $tplParams['supplemental_address_1']    = CRM_Utils_Array::value('supplemental_address_1', $billing_address, '');
+    $tplParams['supplemental_address_2']    = CRM_Utils_Array::value('supplemental_address_2', $billing_address, '');
+    $tplParams['city']                      = CRM_Utils_Array::value('city', $billing_address, '');
+    $tplParams['postal_code']               = CRM_Utils_Array::value('postal_code', $billing_address, '');
+    $tplParams['stateProvinceAbbreviation'] = CRM_Utils_Array::value('stateProvinceAbbreviation', $billing_address, '');
+    $tplParams['postal_code']               = CRM_Utils_Array::value('postal_code', $billing_address, '');
+    $tplParams['country']                   = CRM_Utils_Array::value('country', $billing_address, '');
+  }
+}
+
+
 /**
  * Implements hook_civicrm_config().
  *
