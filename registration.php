@@ -28,6 +28,7 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
   if ($contributionBAO->invoice_id) {
     // the invoice ID is already set
     $invoice_id = $contributionBAO->invoice_id;
+  
   } else {
     $prefix = EVENT_FEE_INVOICE_PREFIX;
     $counter_position = strlen($prefix) + 1;
@@ -40,6 +41,13 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
     } else {
       $invoice_id = "{$prefix}1";
     }
+
+    // update invoice_id on contribution, since it isn't stored stored automatically
+    //  FIXME: report bug?
+    civicrm_api3('Contribution', 'create', array(
+      'id'         => $contributionBAO->id,
+      'invoice_id' => $invoice_id,
+      ));
   }  
 }
 
