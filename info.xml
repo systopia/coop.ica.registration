@@ -14,9 +14,9 @@
     <url desc="Support">https://github.com/systopia/coop.ica.registration/issues</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
-  <releaseDate>2017-03-01</releaseDate>
-  <version>0.9.2</version>
-  <develStage>dev</develStage>
+  <releaseDate>2017-03-02</releaseDate>
+  <version>1.0.beta1</version>
+  <develStage>beta</develStage>
   <compatibility>
     <ver>4.6</ver>
   </compatibility>
