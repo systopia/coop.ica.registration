@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<menu>
+  <item>
+    <path>civicrm/registration/registration_email</path>
+    <page_callback>CRM_Registration_Page_Email</page_callback>
+    <title>Send Confirmation Email</title>
+    <access_arguments>access CiviContribute</access_arguments>
+  </item>
+</menu>

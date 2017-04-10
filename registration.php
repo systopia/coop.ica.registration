@@ -28,13 +28,13 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
   if ($contributionBAO->invoice_id) {
     // the invoice ID is already set
     $invoice_id = $contributionBAO->invoice_id;
-  
+
   } else {
     $prefix = EVENT_FEE_INVOICE_PREFIX;
     $counter_position = strlen($prefix) + 1;
     $last_id = CRM_Core_DAO::singleValueQuery("
-      SELECT MAX(CAST(SUBSTRING(`invoice_id` FROM {$counter_position}) AS UNSIGNED)) 
-      FROM `civicrm_contribution` 
+      SELECT MAX(CAST(SUBSTRING(`invoice_id` FROM {$counter_position}) AS UNSIGNED))
+      FROM `civicrm_contribution`
       WHERE `invoice_id` REGEXP '{$prefix}[0-9]+$';");
     if ($last_id) {
       $invoice_id = $prefix . ($last_id + 1);
@@ -48,7 +48,7 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
       'id'         => $contributionBAO->id,
       'invoice_id' => $invoice_id,
       ));
-  }  
+  }
 }
 
 /**
@@ -116,6 +116,36 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
     $tplParams['stateProvinceAbbreviation'] = CRM_Utils_Array::value('stateProvinceAbbreviation', $billing_address, '');
     $tplParams['postal_code']               = CRM_Utils_Array::value('postal_code', $billing_address, '');
     $tplParams['country']                   = CRM_Utils_Array::value('country', $billing_address, '');
+  }
+}
+
+/**
+ * Redirect "Email Invoice" button to our own interpretation
+ *
+ * @todo use registration_civicrm_alterMenu(&$items) with 4.7+
+ */
+function registration_civicrm_preProcess($formName, &$form) {
+  if ($formName == 'CRM_Contribute_Form_Task_Invoice') {
+    $id = CRM_Utils_Request::retrieve('id', 'Positive', $this, FALSE);
+    CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/registration/registration_email', "cid={$id}"));
+  }
+}
+
+/**
+ * Add new "send confirmation" action to contributions
+ */
+function registration_civicrm_links($op, $objectName, $objectId, &$links, &$mask, &$values) {
+  if ($op == 'contribution.selector.row' && $objectName == 'Contribution') {
+    // check if contribution is eligible:
+    $validation = CRM_Registration_Page_Email::verifyContribution($objectId);
+    if (is_array($validation)) { // that means it's ok
+      $links[] = array(
+          'name'  => ts('Email Confirmation'),
+          'title' => ts('Email Confirmation'),
+          'url'   => 'civicrm/registration/registration_email',
+          'qs'    => "cid={$objectId}",
+        );
+    }
   }
 }
 

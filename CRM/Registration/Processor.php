@@ -79,7 +79,7 @@ class CRM_Registration_Processor {
     $this->processOrganisation($this->data['organisation']);
 
     // step 3: add relationships
-    
+
     // TODO: later
 
 
@@ -158,7 +158,7 @@ class CRM_Registration_Processor {
    *  but we want to process the billing address here
    */
   protected function processOrganisation($organisation) {
-    
+
     // get some stuff
     $organisation_id         = $organisation['contact_id'];
     $billing_address         = $organisation['billing'];
@@ -176,7 +176,7 @@ class CRM_Registration_Processor {
         // check if the address is identical
         $address_is_identical = TRUE;
         foreach ($address_compare_attributes as $attribute) {
-          if (  isset($current_billing_address[$attribute]) 
+          if (  isset($current_billing_address[$attribute])
              && isset($billing_address[$attribute])
              && strcasecmp($current_billing_address[$attribute], $billing_address[$attribute])) {
             $address_is_identical = FALSE;
@@ -184,13 +184,13 @@ class CRM_Registration_Processor {
           }
         }
 
-        // if this address is identical, 
+        // if this address is identical,
         if ($address_is_identical) {
           $address_already_exists = TRUE;
           continue;
         }
 
-        // change existing billing addresses to "Billing_old" 
+        // change existing billing addresses to "Billing_old"
         civicrm_api3('Address', 'create', array(
           'id'               => $current_billing_address['id'],
           'is_billing'       => '0',
@@ -205,7 +205,7 @@ class CRM_Registration_Processor {
       $billing_address['contact_id']       = $organisation_id;
       $billing_address['location_type_id'] = $billing_location_id;
       $billing_address['is_billing']       = 1;
-      civicrm_api3('Address', 'create', $billing_address);      
+      civicrm_api3('Address', 'create', $billing_address);
     }
 
     // process email
@@ -277,7 +277,7 @@ class CRM_Registration_Processor {
         $contribution_data['payment_instrument_id']  = 1; // Credit Card
         $contribution_data['contribution_status_id'] = CRM_Core_OptionGroup::getValue('contribution_status', 'Pending', 'name');
         break;
-      
+
       default:
         error_log("Unknown payment mode '{$this->data['payment_mode']}'.");
       case 'eft':
@@ -323,7 +323,7 @@ class CRM_Registration_Processor {
    */
   protected function createRegistrationLineItem($participant, $contribution_id, $financial_type_id) {
     if (empty($participant['participant_fee_amount'])) return;
-    
+
     $line_item_data = array(
       'entity_table'      => 'civicrm_participant',
       'entity_id'         => $participant['participant_id'],
@@ -412,7 +412,7 @@ class CRM_Registration_Processor {
 
 
   /**
-   * static method to complete a pending online contribution
+   * method to complete a pending online contribution
    */
   public function completePayment($registration_id, $contribution, $timestamp, $requested_status_id = 1) {
     if ($requested_status_id != 1) {
@@ -426,16 +426,31 @@ class CRM_Registration_Processor {
 
     // mark contribution as completed
     civicrm_api3('Contribution', 'create', array(
-      'id'                     => $contribution['id'], 
+      'id'                     => $contribution['id'],
       'contribution_status_id' => 1,
       'receive_date'           => $timestamp));
 
     // update contribution data
     $contribution['contribution_status_id'] = 1;
     $contribution['receive_date'] = $timestamp;
+    $contribution['trxn_id'] = $registration_id;
+
+    // and send out the invoice
+    return $this->sendPaymentInvoice($contribution);
+  }
+
+  /**
+   * Send out the invoice for a previously checked contribution, i.e.
+   *  - contribution is GA payment
+   *  - contribution is in status completed
+   *  - contribution has registration_id set as trxn_id
+   */
+  public function sendPaymentInvoice($contribution, &$sent_to = array()) {
+    // extract params
+    $registration_id = $contribution['trxn_id'];
 
     // create an invoice
-    $invoice_pdf = $this->generateInvoicePDF($contribution, $participant['contact_id'], $registration_id);
+    $invoice_pdf = $this->generateInvoicePDF($contribution, $contribution['contact_id'], $registration_id);
     $attachment  = array('fullPath' => $invoice_pdf,
                          'mime_type' => 'application/pdf',
                          'cleanName' => basename($invoice_pdf));
@@ -459,6 +474,10 @@ class CRM_Registration_Processor {
     }
     $participant = reset($participants['values']);
     $contact = civicrm_api3('Contact', 'getsingle', array('id' => $participant['contact_id']));
+
+    // record all email addresses the mail is sent to
+    $sent_to[] = $contact['email'];
+    $sent_to[] = ICA_EVENT_CONFIRMATION_BCC;
 
     // find the right email template
     $registration_language = CRM_Utils_Array::value("custom_{$registration_language_customfield['id']}", $participant, 'EN');
@@ -497,12 +516,13 @@ class CRM_Registration_Processor {
       'attachments'     => array($attachment),
       'bcc'             => ICA_EVENT_CONFIRMATION_BCC,
       );
-    
+
     if (!empty($billing_email)) {
       $payment_confirmation['cc'] = $billing_email;
+      $sent_to[] = $billing_email;
     }
 
-    civicrm_api3('MessageTemplate', 'send', $payment_confirmation);
+    // civicrm_api3('MessageTemplate', 'send', $payment_confirmation);
   }
 
   /**
@@ -522,7 +542,7 @@ class CRM_Registration_Processor {
     }
 
     if (!empty($eligible_data)) {
-      // there is data eligible for submission -> load current values    
+      // there is data eligible for submission -> load current values
       $contact_data = civicrm_api3('Contact', 'getsingle', array(
         'id'     => $contact_id,
         'return' => implode(',', array_keys($eligible_data)),
@@ -568,7 +588,7 @@ class CRM_Registration_Processor {
   /**
    * add the languages spoken according to the registration to the languages stored with the contact
    */
-  protected function updateContactLanguages($contact_id, $languages_submitted = array()) {    
+  protected function updateContactLanguages($contact_id, $languages_submitted = array()) {
     if (empty($contact_id)) return;
 
     if (!is_array($languages_submitted)) {
@@ -627,7 +647,7 @@ class CRM_Registration_Processor {
     // add/embed partner
     if (!empty($participant['participant_key'])) {
       foreach ($this->data['additional_participants'] as $additional_participant) {
-        if (!empty($additional_participant['partner_of']) 
+        if (!empty($additional_participant['partner_of'])
               && $participant['participant_key'] == $additional_participant['partner_of']) {
           $participant['partner'] = $this->renameCustomFields($additional_participant);
         break;
@@ -671,7 +691,7 @@ class CRM_Registration_Processor {
         $new_array[$new_key] = $value;
       }
     }
-    
+
     return $new_array;
   }
 
@@ -685,11 +705,11 @@ class CRM_Registration_Processor {
       if ('custom_' == substr($key, 0, 7)) {
         if (preg_match("/^custom_\d+$/", $key)) {
           // this has already been resolved (e.g. custom_24)
-          continue; 
+          continue;
         } else {
           // this has NOT been resolved (e.g. custom_registration_id)
           $custom_values[$key] = $value;
-        }        
+        }
       }
     }
 
@@ -795,7 +815,7 @@ class CRM_Registration_Processor {
 
     // set communication language for main participant only
     $this->data['participant']['custom_registration_communication_language'] = $this->data['registration_language'];
-    
+
     // TODO: more?
   }
 
@@ -906,7 +926,7 @@ class CRM_Registration_Processor {
         // $pdf_filename    = tempnam(sys_get_temp_dir(), 'PF_INV_');
         file_put_contents($pdf_filename, $pf_invoice_pdf);
         return $pdf_filename;
-      
+
       } else {
         // template NOT found!
         error_log("coop.ica.registration: Unable to find invoice template. No pro forma invoice PDF generated.");
@@ -935,7 +955,7 @@ class CRM_Registration_Processor {
       case 'FR':
         $language = 'FR';
         break;
-      
+
       case 'Spanish':
       case 'Español':
       case 'ES':
@@ -957,13 +977,13 @@ class CRM_Registration_Processor {
 
     // try to load in the requested language
     $templates = civicrm_api3('MessageTemplate', 'get', array(
-      'msg_title' => $template_pattern . $language, 
+      'msg_title' => $template_pattern . $language,
       'return' => 'id'));
 
     // if not found, try to load in english
     if (empty($templates['id'])) {
       $templates = civicrm_api3('MessageTemplate', 'get', array(
-        'msg_title' => $template_pattern . 'EN', 
+        'msg_title' => $template_pattern . 'EN',
         'return' => 'id'));
     }
 
