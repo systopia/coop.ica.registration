@@ -522,7 +522,7 @@ class CRM_Registration_Processor {
       $sent_to[] = $billing_email;
     }
 
-    // civicrm_api3('MessageTemplate', 'send', $payment_confirmation);
+    civicrm_api3('MessageTemplate', 'send', $payment_confirmation);
   }
 
   /**
