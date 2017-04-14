@@ -6,4 +6,13 @@
     <title>Send Confirmation Email</title>
     <access_arguments>access CiviContribute</access_arguments>
   </item>
+  <item>
+    <path>civicrm/contribute/invoice</path>
+    <title>Custom Invoice PDF</title>
+    <page_callback>CRM_Registration_Processor::getInvoicePDF</page_callback>
+    <access_callback>CRM_Core_Permission::checkDownloadInvoice</access_callback>
+    <page_type>1</page_type>
+    <weight>1000</weight>
+    <component>CiviContribute</component>
+  </item>
 </menu>
