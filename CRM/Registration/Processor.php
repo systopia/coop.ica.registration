@@ -820,25 +820,6 @@ class CRM_Registration_Processor {
   }
 
   /**
-   * Endpoint for "Print Invoice" button
-   */
-  public static function getInvoicePDF() {
-    // get the contribution
-    $contribution_id = CRM_Utils_Request::retrieve('id', 'Positive', CRM_Core_DAO::$_nullObject, FALSE);
-    $contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $contribution_id));
-
-    // get the contact
-    $contact_id = CRM_Utils_Request::retrieve('cid', 'Positive', CRM_Core_DAO::$_nullObject, FALSE);
-
-    // $data = array();
-    $processor = new CRM_Registration_Processor(NULL);
-    $file_name = $contribution['trxn_id'] . '.pdf';
-    $pdf_file = $processor->generateInvoicePDF($contribution, $contact_id, $file_name);
-    $pdf_data = file_get_contents($pdf_file);
-    CRM_Utils_System::download($file_name, 'application/pdf', $pdf_data);
-  }
-
-  /**
    * helper function to generate an invoice PDF
    */
   protected function generateInvoicePDF($contribution, $contact_id, $file_name) {
@@ -961,6 +942,24 @@ class CRM_Registration_Processor {
             && $contribution['contribution_status_id'] != 5
             && $contribution['contribution_status_id'] != 8);
   }
+
+  /**
+   * Endpoint for "Print Invoice" button
+   */
+  public static function getInvoicePDF() {
+    // get the contribution
+    $contribution_id = CRM_Utils_Request::retrieve('id', 'Positive', CRM_Core_DAO::$_nullObject, FALSE);
+    $contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $contribution_id));
+
+    // get the contact
+    $contact_id = CRM_Utils_Request::retrieve('cid', 'Positive', CRM_Core_DAO::$_nullObject, FALSE);
+
+    $processor = new CRM_Registration_Processor(NULL);
+    $pdf_file = $processor->generateInvoicePDF($contribution, $contact_id, $contribution['trxn_id']);
+    $pdf_data = file_get_contents($pdf_file);
+    CRM_Utils_System::download(basename($pdf_file), 'application/pdf', $pdf_data);
+  }
+
 
   /**
    * helper function to find the right template
