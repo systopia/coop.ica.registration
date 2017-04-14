@@ -16,6 +16,7 @@ define('ICA_EVENT_SUBMISSION_PREFIX',   'GA2017');
 define('ICA_EVENT_CONFIRMATION_SENDER', '"International Co-operative Alliance" <secretariat.malaysia2017@ica.coop>');
 define('ICA_EVENT_CONFIRMATION_BCC',    'secretariat.malaysia2017@ica.coop');
 define('ICA_LANGUAGES_CUSTOM_FIELD',    '7');
+define('ICA_COUNTRY_CUSTOM_FIELD',      '8');
 
 define('DOMPDF_ENABLE_AUTOLOAD', FALSE); // apparently CRM/Utils/PDF/Utils.php isn't included
 
@@ -236,6 +237,23 @@ class CRM_Registration_Processor {
           'contact_id'       => $organisation_id,
           'email'            => $billing_email,
           'location_type_id' => $billing_location_id));
+      }
+    }
+
+    // finally: set the (custom) country ID if not yet set (ICA-4766)
+    if (!empty($organisation['country'])) {
+      // first: find out if the country is already set
+      $custom_field = 'custom_' . ICA_COUNTRY_CUSTOM_FIELD;
+      $contact_data = civicrm_api3('Contact', 'getsingle', array(
+        'id'     => $organisation_id,
+        'return' => $custom_field,
+        ));
+      if (empty($contact_data[$custom_field])) {
+        // field is not yet set -> set our country
+        civicrm_api3('Contact', 'create', array(
+          'id'          => $organisation_id,
+          $custom_field => $organisation['country'],
+          ));
       }
     }
   }
