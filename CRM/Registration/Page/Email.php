@@ -73,8 +73,8 @@ class CRM_Registration_Page_Email extends CRM_Core_Page {
       }
 
       // check if in status completed
-      if ($contribution['contribution_status_id'] != 1) {
-        return ts("Contribution [{$contribution_id}] is not marked as completed.");
+      if (!in_array($contribution['contribution_status_id'], array(1,2))) {
+        return ts("Contribution [{$contribution_id}] is not marked as completed/pending.");
       }
 
       // all good: return contribution data
