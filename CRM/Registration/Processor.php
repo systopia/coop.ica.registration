@@ -398,6 +398,7 @@ class CRM_Registration_Processor {
       'organisation'            => $this->renderParticiant($this->data['organisation'], $language_used),
       'additional_participants' => $additional_participants,
       'payment_mode'            => $this->data['payment_mode'],
+      'contribution'            => $contribution,
       );
 
     // create an invoice
