@@ -381,11 +381,11 @@ class CRM_Registration_Processor {
     // add all the variables
     list($domainEmailName, $domainEmailAddress) = CRM_Core_BAO_Domain::getNameAndEmail();
     $emailDomain = CRM_Core_BAO_MailSettings::defaultDomain();
+    $rendered_participant = $this->renderParticiant($participant, $language_used);
     $smarty_variables = array(
       'registration_id'         => $this->data['registration_id'],
-      'participant'             => $this->renderParticiant($participant, $language_used),
-      'participant_attending'   => in_array('Participant', $this->data['participant']['participant_role'])
-                                   || in_array("1" /* Participant */, $this->data['participant']['participant_role']),
+      'participant'             => $rendered_participant,
+      'participant_attending'   => in_array('Participant', $rendered_participant['participant_role']),
       'organisation'            => $this->renderParticiant($this->data['organisation'], $language_used),
       'additional_participants' => $additional_participants,
       'payment_mode'            => $this->data['payment_mode'],
