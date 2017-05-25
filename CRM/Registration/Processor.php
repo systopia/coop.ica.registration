@@ -384,6 +384,7 @@ class CRM_Registration_Processor {
     $smarty_variables = array(
       'registration_id'         => $this->data['registration_id'],
       'participant'             => $this->renderParticiant($participant, $language_used),
+      'particpant_attending'    => in_array('Participant', $this->data['participant']['participant_role']),
       'organisation'            => $this->renderParticiant($this->data['organisation'], $language_used),
       'additional_participants' => $additional_participants,
       'payment_mode'            => $this->data['payment_mode'],
