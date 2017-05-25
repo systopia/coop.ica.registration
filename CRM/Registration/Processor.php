@@ -149,6 +149,9 @@ class CRM_Registration_Processor {
     // finally: copy/fill data into the contact
     $this->fillContactData($pdata['contact_id'], $pdata);
 
+    // finally: set the (custom) country ID if not yet set (ICA-4766)
+    $this->fillContactCountry($pdata['contact_id'], $this->data['organisation']['country']);
+
     return $pdata;
   }
 
@@ -241,21 +244,7 @@ class CRM_Registration_Processor {
     }
 
     // finally: set the (custom) country ID if not yet set (ICA-4766)
-    if (!empty($organisation['country'])) {
-      // first: find out if the country is already set
-      $custom_field = 'custom_' . ICA_COUNTRY_CUSTOM_FIELD;
-      $contact_data = civicrm_api3('Contact', 'getsingle', array(
-        'id'     => $organisation_id,
-        'return' => $custom_field,
-        ));
-      if (empty($contact_data[$custom_field])) {
-        // field is not yet set -> set our country
-        civicrm_api3('Contact', 'create', array(
-          'id'          => $organisation_id,
-          $custom_field => $organisation['country'],
-          ));
-      }
-    }
+    $this->fillContactCountry($organisation_id, $organisation['country']);
   }
 
   /**
@@ -819,6 +808,27 @@ class CRM_Registration_Processor {
     return $this->location_types[$name];
   }
 
+  /**
+   * Will set the contact's country if it hasn't been set yet
+   * @see ICA-4766
+   */
+  protected function fillContactCountry($contact_id, $country) {
+    if (!empty($country)) {
+      // first: find out if the country is already set
+      $custom_field = 'custom_' . ICA_COUNTRY_CUSTOM_FIELD;
+      $contact_data = civicrm_api3('Contact', 'getsingle', array(
+        'id'     => $contact_id,
+        'return' => $custom_field,
+        ));
+      if (empty($contact_data[$custom_field])) {
+        // field is not yet set -> set our country
+        civicrm_api3('Contact', 'create', array(
+          'id'          => $contact_id,
+          $custom_field => $country,
+          ));
+      }
+    }
+  }
 
   /**
    * add some extra data
