@@ -55,7 +55,32 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
  * Implements hook_civicrm_invoiceParams().
  */
 function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
-  // find and add billing address
+  // DETERMINE the invoice_date: (see ICA-5075)
+  //  1) load custom field for $contributionBAO->id
+  $custom_field = CRM_Registration_CustomData::getCustomField('contribution_extra', 'invoice_date');
+  $custom_field_key = 'custom_' . $custom_field['id'];
+  $current_value_query = civicrm_api3('CustomValue', 'get', array(
+    'entity_type'                => 'Contribution',
+    'entity_id'                  => $contributionBAO->id,
+    "return.{$custom_field_key}" => 1));
+  $current_value = reset($current_value_query['values']);
+  $invoice_date = $current_value['latest'];
+  if (empty($invoice_date)) {
+    // 2) if empty set to NOW
+    $invoice_date = date('YmdHis');
+    // Store if contribution not 'Pending' or 'in Progress'
+    if ($contributionBAO->contribution_status_id != 2 && $contributionBAO->contribution_status_id != 5) {
+      civicrm_api3('CustomValue', 'create', array(
+        'entity_type'     => 'Contribution',
+        'entity_id'       => $contributionBAO->id,
+        $custom_field_key => $invoice_date));
+    }
+  }
+  // 3) pass to template (hardcoded date format copied from core code)
+  $tplParams['invoice_date'] = date('F j, Y', strtotime($invoice_date));
+
+
+  // FIND and add billing address
   $billing_address = NULL;
 
   // first try with type Billing
@@ -194,6 +219,10 @@ function registration_civicrm_uninstall() {
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_enable
  */
 function registration_civicrm_enable() {
+  require_once 'CRM/Registration/CustomData.php';
+  $customData = new CRM_Registration_CustomData('coop.ica.registration');
+  $customData->syncCustomGroup(__DIR__ . '/resources/contribution_custom_group.json');
+
   _registration_civix_civicrm_enable();
 }
 
