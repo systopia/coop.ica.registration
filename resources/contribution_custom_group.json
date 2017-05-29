@@ -17,7 +17,7 @@
       "_translate": ["label"],
       "weight": "1",
       "name": "invoice_date",
-      "label": "Date",
+      "label": "Invoice Date",
       "data_type": "Date",
       "html_type": "Select Date",
       "is_required": "0",
