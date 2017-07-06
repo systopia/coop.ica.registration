@@ -64,6 +64,9 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     // load participants
     $registration_id_field = CRM_Registration_CustomData::getCustomFieldKey('GA_Registration', 'registration_id');
+
+    // FIXME: use internal mysq request here
+    // $this->getParticipantsFromRegistrationId()
     $this->particpants = civicrm_api3('Participant', 'get', array(
       $registration_id_field => $this->registration_id,
       'options.limit'        => 0))['values'];
@@ -117,6 +120,15 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     // export form elements
     parent::buildQuickForm();
+  }
+
+  /**
+  * get the participants manually since API doesn't work for Contributions
+  * see  https://issues.civicrm.org/jira/browse/CRM-16036?jql=text%20~%20%22search%20custom%20field%20not%20working%22
+  */
+  protected function getParticipantsFromRegistrationId() {
+
+    // TODO: Use $this->registration_id as mysql Query to get participants for given registration_id
   }
 
 
