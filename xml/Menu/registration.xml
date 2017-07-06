@@ -15,4 +15,10 @@
     <weight>1000</weight>
     <component>CiviContribute</component>
   </item>
+  <item>
+    <path>civicrm/registation/editpayment</path>
+    <page_callback>CRM_Registration_Form_RegistrationPaymentEdit</page_callback>
+    <title>RegistrationPaymentEdit</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
 </menu>
