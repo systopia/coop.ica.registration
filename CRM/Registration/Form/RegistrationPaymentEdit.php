@@ -40,13 +40,13 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     if (!$this->cid) {
       // TODO: errpr
     }
+
     $this->contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $this->cid));
     $this->registration_id = $this->contribution['trxn_id'];
     $this->line_items = civicrm_api3('LineItem', 'get', array(
-      'entity_id'     => $this->cid,
-      'entity_table'  => 'civicrm_contribution',
-      'sequential'    => 0,
-      'options.limit' => 0))['values'];
+      'contribution_id' => $this->cid,
+      'sequential'      => 0,
+      'options.limit'   => 0))['values'];
 
 
     // load possible roles
@@ -65,7 +65,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     $this->role2label[count($this->role2label) + 1] = "Not Participating anymore";
 
     // load participants
-    $this->getParticipantsFromRegistrationId();
+    $this->populateParticipants();
 
     // generate lines
     $this->assign('line_numbers',   range(1, MAX_LINE_COUNT));
@@ -108,7 +108,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     $this->assign('role2amount', json_encode($this->role2amount));
     // FIXE: test code!
-    $this->assign('line_count', count($this->particpants));
+    $this->assign('line_count', count($this->participants));
 
 
     $this->addButtons(array(
@@ -124,22 +124,41 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   }
 
   /**
-  * get the participants manually since API doesn't work for Contributions
-  * see  https://issues.civicrm.org/jira/browse/CRM-16036?jql=text%20~%20%22search%20custom%20field%20not%20working%22
-  */
-  protected function getParticipantsFromRegistrationId() {
-
-    // TODO: Use $this->registration_id as mysql Query to get participants for given registration_id
-    // FIXME:
-    $registration_id_field = CRM_Registration_CustomData::getCustomFieldKey('GA_Registration', 'registration_id');
-    $this->particpants = civicrm_api3('Participant', 'get', array(
-      $registration_id_field => $this->registration_id,
-      'options.limit'        => 0))['values'];
+   * get the participants connected to the registration id
+   * and set participant2label as well
+   */
+  protected function populateParticipants() {
+    $this->participants = array();
     $this->participant2label = array();
-    foreach ($this->particpants as $particpant) {
-      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
+
+    // participant API doesn't work here see CRM-16036
+    // so we'll use SQL (and need to find the right table)
+
+    // first: find the custom field / group involved
+    $registration_id_field    = CRM_Registration_CustomData::getCustomField('GA_Registration', 'registration_id');
+    $registration_id_column   = $registration_id_field['column_name'];
+    $registration_group_table = CRM_Registration_CustomData::getGroupTable('GA_Registration');
+    if (empty($registration_id_field) || empty($registration_group_table)) {
+      // error: Field not found
+      return;
     }
 
+    $participant_selector = CRM_Core_DAO::executeQuery("
+      SELECT entity_id AS participant_id
+      FROM {$registration_group_table} WHERE {$registration_id_column} = '{$this->registration_id}'");
+    $participant_ids = array();
+    while ($participant_selector->fetch()) {
+      $participant_ids[] = $participant_selector->participant_id;
+    }
+
+    if (!empty($participant_ids)) {
+      $this->participants = civicrm_api3('Participant', 'get', array(
+      'id'            => array('IN' => $participant_ids),
+      'options.limit' => 0))['values'];
+    }
+    foreach ($this->participants as $particpant) {
+      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
+    }
   }
 
 

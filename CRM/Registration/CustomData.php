@@ -25,9 +25,9 @@ define('CUSTOM_DATA_HELPER_LOG_ERROR', 5);
 class CRM_Registration_CustomData {
 
   /** caches custom field data, indexed by group name */
-  protected static $custom_group2name  = NULL;
-  protected static $custom_group_cache = array();
-  protected static $custom_field_cache = array();
+  protected static $custom_group_info_cache = NULL;
+  protected static $custom_group_cache      = array();
+  protected static $custom_field_cache      = array();
 
   protected $ts_domain = NULL;
   protected $version   = CUSTOM_DATA_HELPER_VERSION;
@@ -475,22 +475,46 @@ class CRM_Registration_CustomData {
     }
   }
 
-  /**
-   * Get the internal name of a custom gruop
-   */
-  public static function getGroupName($custom_group_id) {
-    if (self::$custom_group2name === NULL) {
+  public static function getGroup($custom_group_id_or_name) {
+    if (self::$custom_group_info_cache === NULL) {
+      self::$custom_group_info_cache = array();
+
       // load groups
       $group_search = civicrm_api3('CustomGroup', 'get', array(
-        'return'       => 'name',
+        'return'       => 'name,table_name,id',
         'option.limit' => 0,
         ));
-      self::$custom_group2name = array();
       foreach ($group_search['values'] as $customGroup) {
-        self::$custom_group2name[$customGroup['id']] = $customGroup['name'];
+        self::$custom_group_info_cache[$customGroup['id']]   = $customGroup;
+        self::$custom_group_info_cache[$customGroup['name']] = $customGroup;
       }
     }
 
-    return self::$custom_group2name[$custom_group_id];
+    return CRM_Utils_Array::value($custom_group_id_or_name, self::$custom_group_info_cache);
+  }
+
+
+  /**
+   * Get the internal name of a custom gruop
+   */
+  public static function getGroupName($custom_group_id_or_name) {
+    $group = self::getGroup($custom_group_id_or_name);
+    if ($group) {
+      return $group['name'];
+    } else {
+      return NULL;
+    }
+  }
+
+  /**
+   * Get the internal name of a custom gruop
+   */
+  public static function getGroupTable($custom_group_id_or_name) {
+    $group = self::getGroup($custom_group_id_or_name);
+    if ($group) {
+      return $group['table_name'];
+    } else {
+      return NULL;
+    }
   }
 }
