@@ -63,18 +63,9 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     }
     $this->role2amount[count($this->role2amount) + 1] = 0;
     $this->role2label[count($this->role2label) + 1] = "Not Participating anymore";
-    // load participants
-    $registration_id_field = CRM_Registration_CustomData::getCustomFieldKey('GA_Registration', 'registration_id');
 
-    // FIXME: use internal mysq request here
-    // $this->getParticipantsFromRegistrationId()
-    $this->particpants = civicrm_api3('Participant', 'get', array(
-      $registration_id_field => $this->registration_id,
-      'options.limit'        => 0))['values'];
-    $this->participant2label = array();
-    foreach ($this->particpants as $particpant) {
-      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
-    }
+    // load participants
+    $this->getParticipantsFromRegistrationId();
 
     // generate lines
     $this->assign('line_numbers',   range(1, MAX_LINE_COUNT));
@@ -139,6 +130,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   protected function getParticipantsFromRegistrationId() {
 
     // TODO: Use $this->registration_id as mysql Query to get participants for given registration_id
+    // FIXME:
+    $registration_id_field = CRM_Registration_CustomData::getCustomFieldKey('GA_Registration', 'registration_id');
+    $this->particpants = civicrm_api3('Participant', 'get', array(
+      $registration_id_field => $this->registration_id,
+      'options.limit'        => 0))['values'];
+    $this->participant2label = array();
+    foreach ($this->particpants as $particpant) {
+      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
+    }
+
   }
 
 
