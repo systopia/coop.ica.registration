@@ -54,7 +54,11 @@
     </td>
 </table>
 
-
+<span class="crm-button crm-icon-button">
+  <span class="crm-button-icon"> </span>
+  <input crm-icon="check" name="additional_participation_line" value="add additional Participant" id="additional_participation_line" />
+</span>
+<p></br></p>
 
 <div class="crm-submit-buttons">
 {include file="CRM/common/formButtons.tpl" location="bottom"}
@@ -99,6 +103,10 @@ function register_role_changes() {
   }
 }
 
+function register_add_lineItem_changes() {
+  cj("[name=additional_participation_line]").click(increaseLineCount);
+}
+
 function calculate_accumulated_amount() {
   var accumulated_amount = 0;
   for (var i = 1; i <= current_line_count; i++) {
@@ -119,6 +127,7 @@ cj(".participant-role").each(function() {
 updateAmounts();
 calculate_accumulated_amount();
 register_role_changes();
+register_add_lineItem_changes();
 
 </script>
 {/literal}
