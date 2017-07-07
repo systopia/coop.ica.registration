@@ -15,9 +15,15 @@
 
 class CRM_Registration_Configuration {
 
-  public static function getFeeForRole($role_id) {
-    return rand() % 100;
-    // TODO: implement
+  public static function getFeeForRole($role_label) {
+    $role_array = array(
+      'International Member'  => 750.00,
+      'Partner'               => 100.00,
+      'Youth'                 => 200.00,
+      'Participant'           => 950.00,
+      'Not Attending'         => 0.00,
+    );
+    return $role_array[$role_label];
   }
 
   /**

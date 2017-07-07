@@ -61,7 +61,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
     foreach ($roles_with_event_fees as $role) {
       $this->role2label[$role['value']]  = $role['label'];
-      $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['value']);
+      $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['label']);
     }
 
     // load participants
