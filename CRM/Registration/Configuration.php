@@ -16,7 +16,7 @@
 class CRM_Registration_Configuration {
 
   public static function getFeeForRole($role_id) {
-    return rand() * 100;
+    return rand() % 100;
     // TODO: implement
   }
 }

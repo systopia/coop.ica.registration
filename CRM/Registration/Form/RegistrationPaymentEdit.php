@@ -61,7 +61,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $this->role2label[$role['value']]  = $role['label'];
       $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['value']);
     }
-
     // load participants
     $registration_id_field = CRM_Registration_CustomData::getCustomFieldKey('GA_Registration', 'registration_id');
 
@@ -99,10 +98,19 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
         "participant_amount_{$i}",
         'amount'
       );
+
     }
 
     // TODO: one contribution (sum) line
-
+    $this->add('static',
+      "contribution_sum_description",
+      'contribution_sum_description',
+      "<b>Contribution Sum:</b>"
+    );
+    $this->add('text',
+      "contribution_sum",
+      'accumulated_amount'
+    );
 
 
     $this->assign('role2amount', json_encode($this->role2amount));

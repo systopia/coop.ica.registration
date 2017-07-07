@@ -34,6 +34,24 @@
     </td>
   </tr>
 {/foreach}
+  {capture assign=contribution_sum_description}contribution_sum_description{/capture}
+  {capture assign=contribution_sum}contribution_sum{/capture}
+  <tr class="accumulated_participant_line">
+    <td>
+      <div class="crm-section">
+        <!-- <div class = description><strong>Contribution Sum: </strong></div> -->
+        {$form.$contribution_sum_description.html}
+      </div>
+    </td>
+    <td>
+      <div class="crm-section">
+      </div>
+    </td>
+    <td>
+      <div class="crm-section">
+        {$form.$contribution_sum.html}
+      </div>
+    </td>
 </table>
 
 
@@ -51,6 +69,7 @@ var current_line_count = initial_line_count;
 var role2amount        = {$role2amount};
 
 {literal}
+////////////////////////////////////////////////////////////////////////////////
 // hide all extra lines
 function showLineCount(line_count) {
   for (var i = 1; i <= line_count; i++) {
@@ -66,11 +85,30 @@ function increaseLineCount() {
   showLineCount(current_line_count);
 }
 
+function updateAmounts() {
+  for (var i = 1; i <= current_line_count; i++) {
+    var role = cj("[name=participant_role_" + i + "]").val();
+    cj("[name=participant_amount_" + i + "]").val(role2amount[role]);
+  }
+  calculate_accumulated_amount();
+}
+
+function register_role_changes() {
+  for (var i = 1; i <= current_line_count; i++) {
+    cj("[name=participant_role_" + i + "]").change(updateAmounts);
+  }
+}
+
+function calculate_accumulated_amount() {
+  var accumulated_amount = 0;
+  for (var i = 1; i <= current_line_count; i++) {
+    accumulated_amount += Number(cj("[name=participant_amount_" + i + "]").val());
+  }
+  cj("[name=contribution_sum]").val(accumulated_amount);
+}
+////////////////////////////////////////////////////////////////////////////////
 // call once initially
 showLineCount(initial_line_count);
-
-// FIXME: Test code!!
-cj("[name=participant_role_1]").change(increaseLineCount);
 
 // cj(".participant-role").change(blaa);
 cj(".participant-role").each(function() {
@@ -78,7 +116,9 @@ cj(".participant-role").each(function() {
  // console.log(cj(this).val())
 });
 
-
+updateAmounts();
+calculate_accumulated_amount();
+register_role_changes();
 
 </script>
 {/literal}
