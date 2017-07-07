@@ -19,4 +19,27 @@ class CRM_Registration_Configuration {
     return rand() % 100;
     // TODO: implement
   }
+
+  /**
+   * Parse query array from civi api and filter out non fee Participant roles.
+   * returns array
+   */
+  public static function filterNonFeeParticipantRoles($roles) {
+    $role_array = array(
+      'International Member',
+      'Partner',
+      'Youth',
+      'Participant',
+      'Not Attending',
+    );
+    $result = array();
+    foreach ($roles as $role) {
+      if (in_array($role['label'], $role_array)) {
+        $result[] = $role;
+      }
+    }
+    error_log("Returning reulst: " . json_encode($result));
+    return $result;
+  }
+
 }

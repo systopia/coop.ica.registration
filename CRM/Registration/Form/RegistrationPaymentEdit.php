@@ -57,12 +57,12 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       ));
     $this->role2amount = array();
     $this->role2label  = array();
-    foreach ($role_query['values'] as $role) {
+
+    $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
+    foreach ($roles_with_event_fees as $role) {
       $this->role2label[$role['value']]  = $role['label'];
       $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['value']);
     }
-    $this->role2amount[count($this->role2amount) + 1] = 0;
-    $this->role2label[count($this->role2label) + 1] = "Not Participating anymore";
 
     // load participants
     $this->populateParticipants();
@@ -169,11 +169,14 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     $values = array();
 
     // FIXME: example code
-    // use $this->participants
-    for ($i=1; $i <= MAX_LINE_COUNT; $i++) {
-      $values["participant_role_{$i}"] = $i;
+    $i = 1;
+    foreach ($this->line_items as $key => $value) {
+      // set participant for lineItem as default value
+      $participation_id = $value['entity_id'];
+      $values["participant_id_{$i}"] = $participation_id;
+      $values["participant_role_{$i}"] = array_search($this->participants[$participation_id]['participant_fee_level'], $this->role2label);
+      $i++;
     }
-
     return $values;
   }
 
