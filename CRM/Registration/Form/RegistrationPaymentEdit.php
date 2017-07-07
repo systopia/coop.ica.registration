@@ -61,6 +61,8 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $this->role2label[$role['value']]  = $role['label'];
       $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['value']);
     }
+    $this->role2amount[count($this->role2amount) + 1] = 0;
+    $this->role2label[count($this->role2label) + 1] = "Not Participating anymore";
     // load participants
     $registration_id_field = CRM_Registration_CustomData::getCustomFieldKey('GA_Registration', 'registration_id');
 
