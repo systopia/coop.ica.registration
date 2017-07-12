@@ -44,8 +44,25 @@ class CRM_Registration_Configuration {
         $result[] = $role;
       }
     }
-    error_log("Returning reulst: " . json_encode($result));
     return $result;
   }
 
+  /**
+   * Parse civi API value array and filter out specific contribution stati
+   * returns an array with contribution_status (optionValue) => label
+   */
+  public static function filterContributionStati($contributions_stati) {
+    $contribution_status_labels = array(
+      'Completed',
+      'Cancelled',
+      'Pending',
+    );
+    $result = array();
+    foreach ($contributions_stati as $contribution_status) {
+      if (in_array($contribution_status['label'], $contribution_status_labels)) {
+        $result[$contribution_status['id']] = $contribution_status['label'];
+      }
+    }
+    return $result;
+  }
 }

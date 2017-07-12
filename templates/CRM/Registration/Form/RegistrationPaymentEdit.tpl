@@ -34,17 +34,20 @@
     </td>
   </tr>
 {/foreach}
-  {capture assign=contribution_sum_description}contribution_sum_description{/capture}
+  {capture assign=contribution_status}contribution_status{/capture}
   {capture assign=contribution_sum}contribution_sum{/capture}
+  {capture assign=contribution_sum_description}contribution_sum_description{/capture}
   <tr class="accumulated_participant_line">
     <td>
       <div class="crm-section">
         <!-- <div class = description><strong>Contribution Sum: </strong></div> -->
-        {$form.$contribution_sum_description.html}
+          {$form.$contribution_sum_description.html}
+
       </div>
     </td>
     <td>
       <div class="crm-section">
+          {$form.$contribution_status.html}
       </div>
     </td>
     <td>

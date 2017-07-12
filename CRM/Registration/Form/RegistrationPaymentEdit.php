@@ -22,15 +22,15 @@ define('MAX_LINE_COUNT', 100);
 class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
 
-  protected $cid               = NULL;
-  protected $contribution      = NULL;
-  protected $registration_id   = NULL;
-  protected $line_items        = NULL;
-  protected $role2label        = NULL;
-  protected $role2amount       = NULL;
-  protected $participants      = NULL;
-  protected $participant2label = NULL;
-
+  protected $cid                  = NULL;
+  protected $contribution         = NULL;
+  protected $registration_id      = NULL;
+  protected $line_items           = NULL;
+  protected $role2label           = NULL;
+  protected $role2amount          = NULL;
+  protected $participants         = NULL;
+  protected $participant2label    = NULL;
+  protected $contribStatus2label  = NULL;
   /**
    * Create form
    */
@@ -67,6 +67,9 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // load participants
     $this->populateParticipants();
 
+    // load contribution stati
+    $this->setContributionStati();
+
     // generate lines
     $this->assign('line_numbers',   range(1, MAX_LINE_COUNT));
     $this->assign('max_line_count', MAX_LINE_COUNT);
@@ -95,10 +98,17 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     }
 
     // TODO: one contribution (sum) line
+    $this->add('select',
+      "contribution_status",
+      'contribution_status',
+      $this->contribStatus2label,
+      FALSE,
+      array('class' => 'contribution-status')
+    );
     $this->add('static',
       "contribution_sum_description",
       'contribution_sum_description',
-      "<b>Contribution Sum:</b>"
+      "<b>Contribution</b>"
     );
     $this->add('text',
       "contribution_sum",
@@ -161,7 +171,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     }
   }
 
-
+  public function setContributionStati() {
+    $stati = civicrm_api3('OptionValue', 'get', array(
+      'sequential' => 1,
+      'options.limit'   => 0,
+      'option_group_id' => "contribution_status",
+    ))['values'];
+    $this->contribStatus2label = array();
+    // this should result in a valid contribStatus2label
+    $this->contribStatus2label = CRM_Registration_Configuration::filterContributionStati($stati);
+  }
   /**
    * set the default (=current) values in the form
    */
@@ -177,6 +196,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $values["participant_role_{$i}"] = array_search($this->participants[$participation_id]['participant_fee_level'], $this->role2label);
       $i++;
     }
+    $values["contribution_status"] = array_search($this->contribution['contribution_status'], $this->contribStatus2label);
     return $values;
   }
 
