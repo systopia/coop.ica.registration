@@ -12,7 +12,7 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
-define('MAX_LINE_COUNT', 100);
+define('MAX_LINE_COUNT', 20);
 
 /**
  * TODO DOKU
@@ -24,6 +24,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
   protected $cid                  = NULL;
   protected $contribution         = NULL;
+  protected $new_contribution     = NULL;
   protected $registration_id      = NULL;
   protected $line_items           = NULL;
   protected $role2label           = NULL;
@@ -31,23 +32,34 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   protected $participants         = NULL;
   protected $participant2label    = NULL;
   protected $contribStatus2label  = NULL;
+
+  /**
+   * Check
+   */
+  public function preProcess() {
+    // load contribution_id from URL
+    $this->cid = CRM_Utils_Request::retrieve('cid', 'Integer');
+    if (empty($this->cid)) {
+      // check if POST is set
+      if (isset($_POST['entryURL'])) {
+        error_log("Manually setting CID for testing purposes now :\\");
+        // FIXME: Dirty temporary HACK for testing purposes -.-
+        $this->cid = 95;
+      }
+    }
+  }
+
   /**
    * Create form
    */
   public function buildQuickForm() {
-    // load contribution + line items
-    $this->cid = CRM_Utils_Request::retrieve('cid', 'Integer');
-    if (!$this->cid) {
-      // TODO: errpr
-    }
-
+    // line items
     $this->contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $this->cid));
     $this->registration_id = $this->contribution['trxn_id'];
     $this->line_items = civicrm_api3('LineItem', 'get', array(
       'contribution_id' => $this->cid,
       'sequential'      => 0,
       'options.limit'   => 0))['values'];
-
 
     // load possible roles
     $role_query = civicrm_api3('OptionValue', 'get', array(
@@ -169,6 +181,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     foreach ($this->participants as $particpant) {
       $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
     }
+    $this->participant2label[0] = "";
   }
 
   public function setContributionStati() {
@@ -196,21 +209,102 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $values["participant_role_{$i}"] = array_search($this->participants[$participation_id]['participant_fee_level'], $this->role2label);
       $i++;
     }
+    $not_attending_roleId = array_search("Not Attending", $this->role2label);
+    for (; $i <= MAX_LINE_COUNT; $i++) {
+      $values["participant_id_{$i}"] = 0;
+      $values["participant_role_{$i}"] = $not_attending_roleId;
+    }
     $values["contribution_status"] = array_search($this->contribution['contribution_status'], $this->contribStatus2label);
     return $values;
   }
 
-  // validate()
+  // public function validate()
 
 
 
   public function postProcess() {
     $values = $this->exportValues();
-    // $options = $this->getColorOptions();
-    // CRM_Core_Session::setStatus(ts('You picked color "%1"', array(
-    //   1 => $options[$values['favorite_color']],
-    // )));
+
+    // we reuse the add Line item Function from this class; but initialize it with NULL
+    // don't need any other values
+    $processor = new CRM_Registration_Processor(NULL);
+    $participants2role = array();
+    $total     = 0.00;
+    for ($i = 1; $i <= MAX_LINE_COUNT; $i++) {
+      if ($values["participant_id_{$i}"] != "0") {
+        $participants2role[$values["participant_id_{$i}"]] = $values["participant_role_{$i}"];
+        $total += $values["participant_amount_{$i}"];
+      }
+    }
+    $transaction = $this->findTransactionIndex($this->contribution['trxn_id']);
+    $transaction_index_counter = 1;
+    if (!empty($transaction['index'])) {
+      $transaction_index_counter = $transaction['index'] + 1;
+    }
+    // compile contribution data
+    $contribution_data = array(
+      'contact_id'             => $this->contribution['contact_id'],
+      // TODO: how to generate new transaction number
+      'trxn_id'                => $transaction['transaction_number'] . "_{$transaction_index_counter}",
+      'currency'               => $this->contribution['currency'],
+      'total_amount'           => $total,
+      'financial_type_id'      => 4, // default (Event Fee)
+      'receive_date'           => $this->contribution['receive_date'],
+      'is_pay_later'           => $this->contribution['is_pay_later'],
+      'payment_instrument_id'  => $this->contribution['payment_instrument_id'],
+      'contribution_status_id' => $this->contribution['contribution_status_id'],
+    );
+    // and create the contribution
+    $this->new_contribution = reset(civicrm_api3('Contribution', 'create', $contribution_data)['values']);
+
+    // create Line Items for new Contribution
+    foreach ($participants2role as $key => $value) {
+      $participant = civicrm_api3('Participant', 'getsingle', array(
+        'sequential' => 1,
+        'id' => $key,
+      ));
+
+      $contact = civicrm_api3('Contact', 'getsingle', array(
+        'sequential' => 1,
+        'id' => $participant['contact_id'],
+      ));
+      $participant['first_name'] = $contact['first_name'];
+      $participant['last_name'] = $contact['last_name'];
+
+      $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+    }
+    //    set old transaction to cancelled
+    $result = civicrm_api3('Contribution', 'create', array(
+      'sequential' => 1,
+      'financial_type_id' => "Event Fee",
+      'total_amount' => "1600.00",
+      'contact_id' => $this->contribution['contact_id'],
+      'id' => $this->contribution['id'],
+      'contribution_status_id' => "Cancelled",
+      'cancel_date' => date('YmdHis', strtotime("now")),
+      'cancel_reason' => "manually edited by coop.ica.register extension",
+    ));
     parent::postProcess();
+  }
+
+  /**
+   * find the current index and original transaction number
+   *
+   * @param $transactionId
+   *
+   * @return array (original_trxn => index)
+   */
+  public function findTransactionIndex($transactionId) {
+    $regex_res = "";
+    $index = "";
+    preg_match("/(?P<original_trxn>[A-Za-z0-9]+-[0-9]+-[0-9]+)(?P<trxn_index>_[0-9]{0,3})?/", $transactionId, $regex_res);
+    if (!empty($regex_res['trxn_index'])) {
+      $index = explode("_", $regex_res['trxn_index'])[1];
+    }
+    return array(
+      'transaction_number' => $regex_res['original_trxn'],
+      'index'              => $index,
+    );
   }
 
 }

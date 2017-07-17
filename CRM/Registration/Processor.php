@@ -320,15 +320,11 @@ class CRM_Registration_Processor {
   }
 
 
-
-
-
-
-
   /**
    * create a registration line item
    */
-  protected function createRegistrationLineItem($participant, $contribution_id, $financial_type_id) {
+  public function createRegistrationLineItem($participant, $contribution_id, $financial_type_id) {
+    error_log("pba_break");
     if (empty($participant['participant_fee_amount'])) return;
 
     $line_item_data = array(
@@ -349,7 +345,7 @@ class CRM_Registration_Processor {
         $line_item_data[$field_name] = $participant[$field_name];
       }
     }
-
+    error_log("Test pba");
     // and create line item
     civicrm_api3('LineItem', 'create', $line_item_data);
   }
