@@ -352,6 +352,12 @@ class CRM_Registration_Processor {
 
     // and create line item
     civicrm_api3('LineItem', 'create', $line_item_data);
+
+    // add the Participant <-> Contribution link (ParticipantPayment):
+    //  (see ICA-5311)
+    civicrm_api3('ParticipantPayment', 'create', array(
+      'participant_id'  => $participant['participant_id'],
+      'contribution_id' => $contribution_id));
   }
 
 
