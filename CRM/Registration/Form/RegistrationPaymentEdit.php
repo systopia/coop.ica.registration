@@ -194,6 +194,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // this should result in a valid contribStatus2label
     $this->contribStatus2label = CRM_Registration_Configuration::filterContributionStati($stati);
   }
+
   /**
    * set the default (=current) values in the form
    */
@@ -227,12 +228,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     // we reuse the add Line item Function from this class; but initialize it with NULL
     // don't need any other values
-    $processor = new CRM_Registration_Processor(NULL);
-    $participants2role = array();
-    $total     = 0.00;
+    $processor          = new CRM_Registration_Processor(NULL);
+    $participants2role  = array();
+    $total              = 0.00;
+
     for ($i = 1; $i <= MAX_LINE_COUNT; $i++) {
       if ($values["participant_id_{$i}"] != "0") {
-        $participants2role[$values["participant_id_{$i}"]] = $values["participant_role_{$i}"];
+        $participants2role[$values["participant_id_{$i}"]] = array(
+                                "fee_level"   => $values["participant_role_{$i}"],
+                                "fee_amount"  => $values["participant_amount_{$i}"]
+        );
         $total += $values["participant_amount_{$i}"];
       }
     }
@@ -244,7 +249,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // compile contribution data
     $contribution_data = array(
       'contact_id'             => $this->contribution['contact_id'],
-      // TODO: how to generate new transaction number
       'trxn_id'                => $transaction['transaction_number'] . "_{$transaction_index_counter}",
       'currency'               => $this->contribution['currency'],
       'total_amount'           => $total,
@@ -258,26 +262,37 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     $this->new_contribution = reset(civicrm_api3('Contribution', 'create', $contribution_data)['values']);
 
     // create Line Items for new Contribution
-    foreach ($participants2role as $key => $value) {
+    foreach ($participants2role as $id => $value) {
+      // update Participants fee level&amount
+      $result = civicrm_api3('Participant', 'create', array(
+        'fee_level' => $this->role2label[$value['fee_level']],
+        'fee_amount' => $value['fee_amount'],
+        'id' => $id,
+      ));
+      if ($result['is_error'] != '0') {
+        error_log("Couldn't properly update Participant with id {$id} and values " . json_encode($value));
+      }
+
       $participant = civicrm_api3('Participant', 'getsingle', array(
-        'sequential' => 1,
-        'id' => $key,
+        'id' => $id,
       ));
 
       $contact = civicrm_api3('Contact', 'getsingle', array(
-        'sequential' => 1,
         'id' => $participant['contact_id'],
       ));
       $participant['first_name'] = $contact['first_name'];
       $participant['last_name'] = $contact['last_name'];
 
       $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+
+      // remove old ParticipantPayment and create a new one
+      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
     }
     //    set old transaction to cancelled
     $result = civicrm_api3('Contribution', 'create', array(
       'sequential' => 1,
       'financial_type_id' => "Event Fee",
-      'total_amount' => "1600.00",
+      'total_amount' => $this->contribution['total_amount'],
       'contact_id' => $this->contribution['contact_id'],
       'id' => $this->contribution['id'],
       'contribution_status_id' => "Cancelled",
@@ -287,6 +302,9 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     parent::postProcess();
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// Helper functions internal
+
   /**
    * find the current index and original transaction number
    *
@@ -294,7 +312,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    *
    * @return array (original_trxn => index)
    */
-  public function findTransactionIndex($transactionId) {
+  private function findTransactionIndex($transactionId) {
     $regex_res = "";
     $index = "";
     preg_match("/(?P<original_trxn>[A-Za-z0-9]+-[0-9]+-[0-9]+)(?P<trxn_index>_[0-9]{0,3})?/", $transactionId, $regex_res);
@@ -305,6 +323,35 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'transaction_number' => $regex_res['original_trxn'],
       'index'              => $index,
     );
+  }
+
+  /**
+   * gets the old participantPayment id
+   * creates new participant payment
+   * deletes old participant payment
+   * @param $participant_id
+   * @param $old_contribution_id
+   * @param $new_contribution_id
+   */
+  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id) {
+    $old_participation_payment = civicrm_api3('ParticipantPayment', 'get', array(
+      'participant_id' => $participant_id,
+      'contribution_id' => $old_contribution_id,
+    ));
+    $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', array(
+      'participant_id' => $participant_id,
+      'contribution_id' => $new_contribution_id,
+    ));
+
+    // if no participation payment is available we can't delete it
+    if (isset($old_participation_payment['id'])) {
+      $result = civicrm_api3('ParticipantPayment', 'delete', array(
+        'id' => $old_participation_payment['id'],
+      ));
+      if ($result['is_error'] != '0') {
+        error_log("Couldn't create new Participation Payment for Participant {$participant_id} for Contribution {$new_contribution_id}");
+      }
+    }
   }
 
 }
