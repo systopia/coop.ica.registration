@@ -232,11 +232,37 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     $participants2role  = array();
     $total              = 0.00;
 
+    // create new contribution
+    $this->createNewContribution($values, $participants2role, $total);
+
+    // create Line Items for new Contribution
+    foreach ($participants2role as $id => $value) {
+      // update Participants fee level&amount
+      $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id);
+      // get participant data for Line Item creation
+      $participant = $this->getParticipant($key);
+      // create Line Items
+      $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+      // remove old ParticipantPayment and create a new one
+      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
+    }
+    // remove the original Line Item
+    $this->removeOriginalLineItems();
+    //    set old transaction to cancelled
+    $this->cancelOldContribution();
+
+    parent::postProcess();
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Helper functions internal
+
+  private function createNewContribution($values, &$participants2role, &$total) {
     for ($i = 1; $i <= MAX_LINE_COUNT; $i++) {
       if ($values["participant_id_{$i}"] != "0") {
         $participants2role[$values["participant_id_{$i}"]] = array(
-                                "fee_level"   => $values["participant_role_{$i}"],
-                                "fee_amount"  => $values["participant_amount_{$i}"]
+          "fee_level"   => $values["participant_role_{$i}"],
+          "fee_amount"  => $values["participant_amount_{$i}"]
         );
         $total += $values["participant_amount_{$i}"];
       }
@@ -260,50 +286,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     );
     // and create the contribution
     $this->new_contribution = reset(civicrm_api3('Contribution', 'create', $contribution_data)['values']);
-
-    // create Line Items for new Contribution
-    foreach ($participants2role as $id => $value) {
-      // update Participants fee level&amount
-      $result = civicrm_api3('Participant', 'create', array(
-        'fee_level' => $this->role2label[$value['fee_level']],
-        'fee_amount' => $value['fee_amount'],
-        'id' => $id,
-      ));
-      if ($result['is_error'] != '0') {
-        error_log("Couldn't properly update Participant with id {$id} and values " . json_encode($value));
-      }
-
-      $participant = civicrm_api3('Participant', 'getsingle', array(
-        'id' => $id,
-      ));
-
-      $contact = civicrm_api3('Contact', 'getsingle', array(
-        'id' => $participant['contact_id'],
-      ));
-      $participant['first_name'] = $contact['first_name'];
-      $participant['last_name'] = $contact['last_name'];
-
-      $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
-
-      // remove old ParticipantPayment and create a new one
-      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
-    }
-    //    set old transaction to cancelled
-    $result = civicrm_api3('Contribution', 'create', array(
-      'sequential' => 1,
-      'financial_type_id' => "Event Fee",
-      'total_amount' => $this->contribution['total_amount'],
-      'contact_id' => $this->contribution['contact_id'],
-      'id' => $this->contribution['id'],
-      'contribution_status_id' => "Cancelled",
-      'cancel_date' => date('YmdHis', strtotime("now")),
-      'cancel_reason' => "manually edited by coop.ica.register extension",
-    ));
-    parent::postProcess();
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// Helper functions internal
 
   /**
    * find the current index and original transaction number
@@ -352,6 +335,71 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
         error_log("Couldn't create new Participation Payment for Participant {$participant_id} for Contribution {$new_contribution_id}");
       }
     }
+  }
+
+  /**
+   * Removes the default Line items which is created when creating the contribution
+   */
+  private function removeOriginalLineItems() {
+    // remove default Line Item
+    $original_line_item = civicrm_api3(
+      'LineItem',
+      'getsingle',
+      array(
+        'contribution_id' => $this->new_contribution['id'],
+        'entity_table' => 'civicrm_contribution',
+        'entity_id' => $this->new_contribution['id'])
+    );
+    civicrm_api3('LineItem', 'delete', array('id' => $original_line_item['id']));
+  }
+
+  /**
+   * Gather Participant data
+   * @param $id
+   */
+  private function getParticipant($id) {
+    $participant = civicrm_api3('Participant', 'getsingle', [
+      'id' => $id,
+    ]);
+    $contact = civicrm_api3('Contact', 'getsingle', [
+      'id' => $participant['contact_id'],
+    ]);
+    $participant['first_name'] = $contact['first_name'];
+    $participant['last_name'] = $contact['last_name'];
+
+    return $participant;
+  }
+
+  /**
+   * @param $fee_amount
+   * @param $fee_level
+   * @param $id
+   */
+  private function updateParticipantData($fee_amount, $fee_level, $id) {
+    $result = civicrm_api3('Participant', 'create', array(
+      'fee_level' => $this->role2label[$fee_level],
+      'fee_amount' => $value[$fee_amount],
+      'id' => $id,
+    ));
+    if ($result['is_error'] != '0') {
+      error_log("Couldn't properly update Participant with id {$id} and fee_amount: {$fee_amount} and {$fee_level}" );
+    }
+  }
+
+  /**
+   * Cancel the old contribution
+   */
+  private function cancelOldContribution() {
+    $result = civicrm_api3('Contribution', 'create', array(
+      'sequential' => 1,
+      'financial_type_id' => "Event Fee",
+      'total_amount' => $this->contribution['total_amount'],
+      'contact_id' => $this->contribution['contact_id'],
+      'id' => $this->contribution['id'],
+      'contribution_status_id' => "Cancelled",
+      'cancel_date' => date('YmdHis', strtotime("now")),
+      'cancel_reason' => "manually edited by coop.ica.register extension",
+    ));
   }
 
 }
