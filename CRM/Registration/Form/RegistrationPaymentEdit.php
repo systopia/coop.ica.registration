@@ -240,7 +240,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       // update Participants fee level&amount
       $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id);
       // get participant data for Line Item creation
-      $participant = $this->getParticipant($key);
+      $participant = $this->getParticipant($id);
       // create Line Items
       $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
       // remove old ParticipantPayment and create a new one
@@ -378,7 +378,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   private function updateParticipantData($fee_amount, $fee_level, $id) {
     $result = civicrm_api3('Participant', 'create', array(
       'fee_level' => $this->role2label[$fee_level],
-      'fee_amount' => $value[$fee_amount],
+      'fee_amount' => $fee_amount,
       'id' => $id,
     ));
     if ($result['is_error'] != '0') {
