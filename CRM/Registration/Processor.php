@@ -346,6 +346,12 @@ class CRM_Registration_Processor {
     }
     // and create line item
     civicrm_api3('LineItem', 'create', $line_item_data);
+
+    // add the Participant <-> Contribution link (ParticipantPayment):
+    //  (see ICA-5311)
+    civicrm_api3('ParticipantPayment', 'create', array(
+      'participant_id'  => $participant['participant_id'],
+      'contribution_id' => $contribution_id));
   }
 
 
@@ -854,24 +860,21 @@ class CRM_Registration_Processor {
       $contribution_ids = array($contribution['id']);
       $params = array('forPage' => 1, 'output' => 'pdf_invoice');
       $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
-      $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $file_name . '.pdf');
+
+      // DISABLED: DOMPDF crashes with large amounts of line items (registrations) (see #5305)
+      // $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $file_name . '.pdf');
+      $template        = self::getInvoiceTemplate();
+      $pdf_filename    = "{$contribution['trxn_id']}.pdf";
+      $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($invoice_html, $pf_invoice_pdf, TRUE, $template->pdf_format_id);
+      file_put_contents($pdf_filename, $pf_invoice_pdf);
+      return $pdf_filename;
+
       return $invoice_pdf;
 
     } else {
       // GENERATE PRO FORMA INVOICE
-
-      // find the template
-      $template_query = CRM_Core_DAO::executeQuery("
-          SELECT msg_html, pdf_format_id
-            FROM civicrm_msg_template
-            LEFT JOIN civicrm_option_value ON workflow_id = civicrm_option_value.id
-            LEFT JOIN civicrm_option_group ON civicrm_option_value.option_group_id = civicrm_option_group.id
-          WHERE civicrm_msg_template.is_default = 1
-            AND civicrm_option_group.name = 'msg_tpl_workflow_contribution'
-            AND civicrm_option_value.label = 'Contribution Invoice Receipt'
-          ORDER BY civicrm_msg_template.id DESC
-          LIMIT 1;");
-      if ($template_query->fetch()) {
+      $template = self::getInvoiceTemplate();
+      if ($template) {
         // prepare renderer
         $config = CRM_Core_Config::singleton();
         $smarty = CRM_Core_Smarty::singleton();
@@ -944,9 +947,9 @@ class CRM_Registration_Processor {
 
 
         // FINALLY: generate invoice
-        $pf_invoice_html = $smarty->fetch("string:" . $template_query->msg_html);
+        $pf_invoice_html = $smarty->fetch("string:" . $template->msg_html);
         $pdf_filename    = "{$contribution['trxn_id']}.pdf";
-        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, $pf_invoice_pdf, TRUE, $template_query->pdf_format_id);
+        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, $pf_invoice_pdf, TRUE, $template->pdf_format_id);
         // $pdf_filename    = tempnam(sys_get_temp_dir(), 'PF_INV_');
         file_put_contents($pdf_filename, $pf_invoice_pdf);
         return $pdf_filename;
@@ -956,6 +959,28 @@ class CRM_Registration_Processor {
         error_log("coop.ica.registration: Unable to find invoice template. No pro forma invoice PDF generated.");
         return NULL;
       }
+    }
+  }
+
+  /**
+   * Get the BAO of the template to be used for invoicing
+   */
+  protected static function getInvoiceTemplate() {
+    // find the template
+    $template_query = CRM_Core_DAO::executeQuery("
+        SELECT msg_html, pdf_format_id
+          FROM civicrm_msg_template
+          LEFT JOIN civicrm_option_value ON workflow_id = civicrm_option_value.id
+          LEFT JOIN civicrm_option_group ON civicrm_option_value.option_group_id = civicrm_option_group.id
+        WHERE civicrm_msg_template.is_default = 1
+          AND civicrm_option_group.name = 'msg_tpl_workflow_contribution'
+          AND civicrm_option_value.label = 'Contribution Invoice Receipt'
+        ORDER BY civicrm_msg_template.id DESC
+        LIMIT 1;");
+    if ($template_query->fetch()) {
+      return $template_query;
+    } else {
+      return NULL;
     }
   }
 
