@@ -78,6 +78,9 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
   }
   // 3) pass to template (hardcoded date format copied from core code)
   $tplParams['invoice_date'] = date('F j, Y', strtotime($invoice_date));
+  if (isset($contributionBAO->cancel_date)) {
+    $tplParams['cancel_date']  = date('F j, Y', strtotime($contributionBAO->cancel_date));
+  }
 
 
   // FIND and add billing address
