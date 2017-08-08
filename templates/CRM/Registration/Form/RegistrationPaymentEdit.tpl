@@ -67,6 +67,8 @@
 {include file="CRM/common/formButtons.tpl" location="bottom"}
 </div>
 
+{* hidden vars *}
+{$form.cid.html}
 
 <script type="text/javascript">
 

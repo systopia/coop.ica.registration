@@ -40,12 +40,9 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // load contribution_id from URL
     $this->cid = CRM_Utils_Request::retrieve('cid', 'Integer');
     if (empty($this->cid)) {
-      // check if POST is set
-      if (isset($_POST['entryURL'])) {
-        error_log("Manually setting CID for testing purposes now :\\");
-        // FIXME: Dirty temporary HACK for testing purposes -.-
-        $this->cid = 95;
-      }
+      CRM_Core_Error::fatal("No contribution ID (cid) given.");
+    } else {
+      $this->add('hidden', 'cid', $this->cid);
     }
   }
 
@@ -165,9 +162,11 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       return;
     }
 
+    $reg_id = $this->findTransactionIndex($this->registration_id);
+
     $participant_selector = CRM_Core_DAO::executeQuery("
       SELECT entity_id AS participant_id
-      FROM {$registration_group_table} WHERE {$registration_id_column} = '{$this->registration_id}'");
+      FROM {$registration_group_table} WHERE {$registration_id_column} = '{$reg_id['transaction_number']}'");
     $participant_ids = array();
     while ($participant_selector->fetch()) {
       $participant_ids[] = $participant_selector->participant_id;
@@ -247,7 +246,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
     }
     // remove the original Line Item
-    $this->removeOriginalLineItems();
+    $this->removeOriginalLineItem();
     //    set old transaction to cancelled
     $this->cancelOldContribution();
 
@@ -326,21 +325,18 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'contribution_id' => $new_contribution_id,
     ));
 
-    // if no participation payment is available we can't delete it
-    if (isset($old_participation_payment['id'])) {
-      $result = civicrm_api3('ParticipantPayment', 'delete', array(
-        'id' => $old_participation_payment['id'],
-      ));
-      if ($result['is_error'] != '0') {
-        error_log("Couldn't create new Participation Payment for Participant {$participant_id} for Contribution {$new_contribution_id}");
-      }
+    if ($old_participation_payment['is_error'] == '0' and !empty($old_contribution_id)) {
+      // need to delete Participant Payment manually, otherwise the old contribution is deleted as well,
+      // which is not what we want in this case
+      $query = "DELETE FROM  `civicrm_participant_payment` WHERE `civicrm_participant_payment`.`contribution_id` = {$old_contribution_id}";
+      CRM_Core_DAO::executeQuery($query);
     }
   }
 
   /**
    * Removes the default Line items which is created when creating the contribution
    */
-  private function removeOriginalLineItems() {
+  private function removeOriginalLineItem() {
     // remove default Line Item
     $original_line_item = civicrm_api3(
       'LineItem',
@@ -390,16 +386,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * Cancel the old contribution
    */
   private function cancelOldContribution() {
-    $result = civicrm_api3('Contribution', 'create', array(
-      'sequential' => 1,
-      'financial_type_id' => "Event Fee",
-      'total_amount' => $this->contribution['total_amount'],
-      'contact_id' => $this->contribution['contact_id'],
-      'id' => $this->contribution['id'],
-      'contribution_status_id' => "Cancelled",
-      'cancel_date' => date('YmdHis', strtotime("now")),
-      'cancel_reason' => "manually edited by coop.ica.register extension",
-    ));
+    $arguments = array(
+      'financial_type_id'       => "4",
+      'id'                      => $this->contribution['id'],
+      'contribution_status_id'  => "3",
+      'currency'                => $this->contribution['currency'],
+      'cancel_date'             => date('YmdHis', strtotime("now")),
+      'cancel_reason'           => "manually edited by coop.ica.register extension",
+      ''
+    );
+    $result = civicrm_api3('Contribution', 'create', $arguments);
   }
 
 }
