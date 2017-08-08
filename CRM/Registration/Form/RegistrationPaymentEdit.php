@@ -124,7 +124,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'accumulated_amount'
     );
 
-
     $this->assign('role2amount', json_encode($this->role2amount));
     // FIXE: test code!
     $this->assign('line_count', count($this->participants));
@@ -281,7 +280,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'receive_date'           => $this->contribution['receive_date'],
       'is_pay_later'           => $this->contribution['is_pay_later'],
       'payment_instrument_id'  => $this->contribution['payment_instrument_id'],
-      'contribution_status_id' => $this->contribution['contribution_status_id'],
+      'contribution_status_id' => $values['contribution_status'],
     );
     // and create the contribution
     $this->new_contribution = reset(civicrm_api3('Contribution', 'create', $contribution_data)['values']);

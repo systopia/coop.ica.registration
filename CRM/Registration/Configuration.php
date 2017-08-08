@@ -54,13 +54,12 @@ class CRM_Registration_Configuration {
   public static function filterContributionStati($contributions_stati) {
     $contribution_status_labels = array(
       'Completed',
-      'Cancelled',
       'Pending',
     );
     $result = array();
     foreach ($contributions_stati as $contribution_status) {
       if (in_array($contribution_status['label'], $contribution_status_labels)) {
-        $result[$contribution_status['id']] = $contribution_status['label'];
+        $result[$contribution_status['value']] = $contribution_status['label'];
       }
     }
     return $result;

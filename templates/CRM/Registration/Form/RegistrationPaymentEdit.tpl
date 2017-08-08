@@ -102,6 +102,11 @@ function updateAmounts() {
   calculate_accumulated_amount();
 }
 
+function updateContribStatus() {
+    var status = cj("[name=contribution_status").val();
+    cj("[name=contribution_status]").val(status);
+}
+
 function register_role_changes() {
   for (var i = 1; i <= current_line_count; i++) {
     cj("[name=participant_role_" + i + "]").change(updateAmounts);
@@ -110,6 +115,10 @@ function register_role_changes() {
 
 function register_add_lineItem_changes() {
   cj("[name=additional_participation_line]").click(increaseLineCount);
+}
+
+function register_contribution_status_changes() {
+    cj("[name=contribution_status]").change(updateContribStatus);
 }
 
 function calculate_accumulated_amount() {
@@ -133,6 +142,7 @@ updateAmounts();
 calculate_accumulated_amount();
 register_role_changes();
 register_add_lineItem_changes();
+register_contribution_status_changes();
 
 </script>
 {/literal}
