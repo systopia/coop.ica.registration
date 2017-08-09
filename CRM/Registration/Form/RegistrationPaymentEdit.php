@@ -22,16 +22,17 @@ define('MAX_LINE_COUNT', 20);
 class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
 
-  protected $cid                  = NULL;
-  protected $contribution         = NULL;
-  protected $new_contribution     = NULL;
-  protected $registration_id      = NULL;
-  protected $line_items           = NULL;
-  protected $role2label           = NULL;
-  protected $role2amount          = NULL;
-  protected $participants         = NULL;
-  protected $participant2label    = NULL;
-  protected $contribStatus2label  = NULL;
+  protected $cid                      = NULL;
+  protected $contribution             = NULL;
+  protected $new_contribution         = NULL;
+  protected $registration_id          = NULL;
+  protected $line_items               = NULL;
+  protected $role2label               = NULL;
+  protected $role2amount              = NULL;
+  protected $participants             = NULL;
+  protected $participant2label        = NULL;
+  protected $contribStatus2label      = NULL;
+  protected $paymentInstrument2label  = NULL;
 
   /**
    * Check
@@ -64,14 +65,28 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'options.limit'   => 0,
       'sequential'      => 1,
       ));
-    $this->role2amount = array();
-    $this->role2label  = array();
+
+    // initialize option Arrays
+    $this->role2amount              = array();
+    $this->role2label               = array();
+    $this->paymentInstrument2label  = array();
 
     $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
     foreach ($roles_with_event_fees as $role) {
       $this->role2label[$role['value']]  = $role['label'];
       $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['label']);
     }
+
+    // load possible payment Instruments
+    $payment_instruments = civicrm_api3('OptionValue', 'get', array(
+      'sequential' => 1,
+      'option_group_id' => "payment_instrument",
+    ))['values'];
+
+    foreach ($payment_instruments as $payment_instrument) {
+      $this->paymentInstrument2label[$payment_instrument['value']] = $payment_instrument['label'];
+    }
+
 
     // load participants
     $this->populateParticipants();
@@ -101,7 +116,8 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
       $this->add('text',
         "participant_amount_{$i}",
-        'amount'
+        'amount',
+        'readonly'
       );
 
     }
@@ -121,12 +137,21 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     );
     $this->add('text',
       "contribution_sum",
-      'accumulated_amount'
+      'accumulated_amount',
+      'readonly'
     );
 
     $this->assign('role2amount', json_encode($this->role2amount));
-    // FIXE: test code!
     $this->assign('line_count', count($this->participants));
+
+    //
+    $this->add('select',
+      "payment_method",
+      'Payment Method',
+      $this->paymentInstrument2label,
+      FALSE,
+      array('class' => 'contribution-paymentMethod')
+    );
 
 
     $this->addButtons(array(
@@ -214,6 +239,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $values["participant_role_{$i}"] = $not_attending_roleId;
     }
     $values["contribution_status"] = array_search($this->contribution['contribution_status'], $this->contribStatus2label);
+    $values["payment_method"] = array_search($this->contribution['payment_instrument_id'], $this->paymentInstrument2label);
     return $values;
   }
 
@@ -285,7 +311,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'financial_type_id'      => 4, // default (Event Fee)
       'receive_date'           => $this->contribution['receive_date'],
       'is_pay_later'           => $this->contribution['is_pay_later'],
-      'payment_instrument_id'  => $this->contribution['payment_instrument_id'],
+      'payment_instrument_id'  => $values['payment_method'],
       'contribution_status_id' => $values['contribution_status'],
     );
     // and create the contribution

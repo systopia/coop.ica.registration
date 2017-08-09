@@ -34,9 +34,11 @@
     </td>
   </tr>
 {/foreach}
-  {capture assign=contribution_status}contribution_status{/capture}
-  {capture assign=contribution_sum}contribution_sum{/capture}
-  {capture assign=contribution_sum_description}contribution_sum_description{/capture}
+
+{capture assign=contribution_status}contribution_status{/capture}
+{capture assign=contribution_sum}contribution_sum{/capture}
+{capture assign=contribution_sum_description}contribution_sum_description{/capture}
+{capture assign=payment_method}payment_method{/capture}
   <tr class="accumulated_participant_line">
     <td>
       <div class="crm-section">
@@ -45,6 +47,8 @@
 
       </div>
     </td>
+  </tr>
+  <tr>
     <td>
       <div class="crm-section">
           {$form.$contribution_status.html}
@@ -52,9 +56,15 @@
     </td>
     <td>
       <div class="crm-section">
+          {$form.$payment_method.html}
+      </div>
+    </td>
+    <td>
+      <div class="crm-section">
         {$form.$contribution_sum.html}
       </div>
     </td>
+  </tr>
 </table>
 
 <span class="crm-button crm-icon-button">
