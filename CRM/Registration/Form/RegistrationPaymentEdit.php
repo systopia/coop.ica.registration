@@ -235,14 +235,20 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     // create Line Items for new Contribution
     foreach ($participants2role as $id => $value) {
+      $attending = True;
+      if ($value['fee_amount'] == '0' && $this->role2label[$value['fee_level']] == 'Not Attending') {
+        $attending = False;
+      }
       // update Participants fee level&amount
-      $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id);
+      $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id, $attending);
       // get participant data for Line Item creation
       $participant = $this->getParticipant($id);
       // create Line Items
-      $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+      if ($attending) {
+        $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+      }
       // remove old ParticipantPayment and create a new one
-      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
+      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id'], $attending);
     }
     // remove the original Line Item
     $this->removeOriginalLineItem();
@@ -314,15 +320,18 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $old_contribution_id
    * @param $new_contribution_id
    */
-  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id) {
+  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id, $attending = True) {
     $old_participation_payment = civicrm_api3('ParticipantPayment', 'get', array(
       'participant_id' => $participant_id,
       'contribution_id' => $old_contribution_id,
     ));
-    $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', array(
-      'participant_id' => $participant_id,
-      'contribution_id' => $new_contribution_id,
-    ));
+    // don't create a new participant payment if participant is cancelled/not attending
+    if ($attending) {
+      $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', array(
+        'participant_id' => $participant_id,
+        'contribution_id' => $new_contribution_id,
+      ));
+    }
 
     if ($old_participation_payment['is_error'] == '0' and !empty($old_contribution_id)) {
       // need to delete Participant Payment manually, otherwise the old contribution is deleted as well,
@@ -370,12 +379,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $fee_level
    * @param $id
    */
-  private function updateParticipantData($fee_amount, $fee_level, $id) {
-    $result = civicrm_api3('Participant', 'create', array(
+  private function updateParticipantData($fee_amount, $fee_level, $id, $attending = True) {
+    $params = array(
       'fee_level' => $this->role2label[$fee_level],
       'fee_amount' => $fee_amount,
       'id' => $id,
-    ));
+    );
+    if (!$attending) {
+      $params['status_id'] = "Cancelled";
+    }
+    $result = civicrm_api3('Participant', 'create', $params);
     if ($result['is_error'] != '0') {
       error_log("Couldn't properly update Participant with id {$id} and fee_amount: {$fee_amount} and {$fee_level}" );
     }
