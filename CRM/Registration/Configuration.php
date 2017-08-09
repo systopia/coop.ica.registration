@@ -51,11 +51,15 @@ class CRM_Registration_Configuration {
    * Parse civi API value array and filter out specific contribution stati
    * returns an array with contribution_status (optionValue) => label
    */
-  public static function filterContributionStati($contributions_stati) {
+  public static function filterContributionStati($contributions_stati, $contributionStatus) {
     $contribution_status_labels = array(
       'Completed',
       'Pending',
     );
+    if ($contributionStatus == 'Cancelled') {
+      // we need to add canceled here as well!
+      $contribution_status_labels[] = 'Cancelled';
+    }
     $result = array();
     foreach ($contributions_stati as $contribution_status) {
       if (in_array($contribution_status['label'], $contribution_status_labels)) {

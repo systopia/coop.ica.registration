@@ -180,7 +180,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     ))['values'];
     $this->contribStatus2label = array();
     // this should result in a valid contribStatus2label
-    $this->contribStatus2label = CRM_Registration_Configuration::filterContributionStati($stati);
+    $this->contribStatus2label = CRM_Registration_Configuration::filterContributionStati($stati, $this->contribution['contribution_status']);
   }
 
   /**
