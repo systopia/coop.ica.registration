@@ -45,54 +45,21 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     } else {
       $this->add('hidden', 'cid', $this->cid);
     }
-  }
 
-  /**
-   * Create form
-   */
-  public function buildQuickForm() {
-    // line items
-    $this->contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $this->cid));
-    $this->registration_id = $this->contribution['trxn_id'];
-    $this->line_items = civicrm_api3('LineItem', 'get', array(
-      'contribution_id' => $this->cid,
-      'sequential'      => 0,
-      'options.limit'   => 0))['values'];
-
-    // load possible roles
-    $role_query = civicrm_api3('OptionValue', 'get', array(
-      'option_group_id' => 'participant_role',
-      'options.limit'   => 0,
-      'sequential'      => 1,
-      ));
-
-    // initialize option Arrays
-    $this->role2amount              = array();
-    $this->role2label               = array();
-    $this->paymentInstrument2label  = array();
-
-    $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
-    foreach ($roles_with_event_fees as $role) {
-      $this->role2label[$role['value']]  = $role['label'];
-      $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['label']);
-    }
-
-    // load possible payment Instruments
-    $payment_instruments = civicrm_api3('OptionValue', 'get', array(
-      'sequential' => 1,
-      'option_group_id' => "payment_instrument",
-    ))['values'];
-
-    foreach ($payment_instruments as $payment_instrument) {
-      $this->paymentInstrument2label[$payment_instrument['value']] = $payment_instrument['label'];
-    }
-
+    // initialize variables/data
+    $this->initializeInternalData();
 
     // load participants
     $this->populateParticipants();
 
     // load contribution stati
     $this->setContributionStati();
+  }
+
+  /**
+   * Create form
+   */
+  public function buildQuickForm() {
 
     // generate lines
     $this->assign('line_numbers',   range(1, MAX_LINE_COUNT));
@@ -122,7 +89,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     }
 
-    // TODO: one contribution (sum) line
     $this->add('select',
       "contribution_status",
       'contribution_status',
@@ -152,7 +118,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       FALSE,
       array('class' => 'contribution-paymentMethod')
     );
-
 
     $this->addButtons(array(
       array(
@@ -287,6 +252,52 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 ////////////////////////////////////////////////////////////////////////////////
 /// Helper functions internal
 
+  /**
+   * Initiliazes internal data, mappings and arrays for form builder
+   */
+  private function initializeInternalData(){
+    // initialize option Arrays
+    $this->role2amount              = array();
+    $this->role2label               = array();
+    $this->paymentInstrument2label  = array();
+
+    // line items
+    $this->contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $this->cid));
+    $this->registration_id = $this->contribution['trxn_id'];
+    $this->line_items = civicrm_api3('LineItem', 'get', array(
+      'contribution_id' => $this->cid,
+      'sequential'      => 0,
+      'options.limit'   => 0))['values'];
+
+    // load possible roles
+    $role_query = civicrm_api3('OptionValue', 'get', array(
+      'option_group_id' => 'participant_role',
+      'options.limit'   => 0,
+      'sequential'      => 1,
+    ));
+
+    $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
+    foreach ($roles_with_event_fees as $role) {
+      $this->role2label[$role['value']]  = $role['label'];
+      $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['label']);
+    }
+
+    // load possible payment Instruments
+    $payment_instruments = civicrm_api3('OptionValue', 'get', array(
+      'sequential' => 1,
+      'option_group_id' => "payment_instrument",
+    ))['values'];
+
+    foreach ($payment_instruments as $payment_instrument) {
+      $this->paymentInstrument2label[$payment_instrument['value']] = $payment_instrument['label'];
+    }
+  }
+
+  /**
+   * @param $values
+   * @param $participants2role
+   * @param $total
+   */
   private function createNewContribution($values, &$participants2role, &$total) {
     for ($i = 1; $i <= MAX_LINE_COUNT; $i++) {
       if ($values["participant_id_{$i}"] != "0") {
