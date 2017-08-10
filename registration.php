@@ -180,6 +180,7 @@ function registration_civicrm_links($op, $objectName, $objectId, &$links, &$mask
       'title'     => ts('Adjust Invoice'),
       'url'       => 'civicrm/registation/editpayment',
       'qs'        =>"cid={$objectId}",
+      'class' => 'no-popup',
     );
   }
 }
