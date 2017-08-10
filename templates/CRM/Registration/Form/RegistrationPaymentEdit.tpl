@@ -107,7 +107,7 @@ function register_contribution_status_changes() {
 
 function calculate_accumulated_amount() {
   var accumulated_amount = 0;
-  for (var i = 1; i <= current_line_count; i++) {
+  for (var i = 1; i <= line_count; i++) {
     accumulated_amount += Number(cj("[name=participant_amount_" + i + "]").val());
   }
   cj("[name=contribution_sum]").val(accumulated_amount);
