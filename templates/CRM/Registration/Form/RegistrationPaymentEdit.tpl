@@ -34,9 +34,11 @@
     </td>
   </tr>
 {/foreach}
-  {capture assign=contribution_status}contribution_status{/capture}
-  {capture assign=contribution_sum}contribution_sum{/capture}
-  {capture assign=contribution_sum_description}contribution_sum_description{/capture}
+
+{capture assign=contribution_status}contribution_status{/capture}
+{capture assign=contribution_sum}contribution_sum{/capture}
+{capture assign=contribution_sum_description}contribution_sum_description{/capture}
+{capture assign=payment_method}payment_method{/capture}
   <tr class="accumulated_participant_line">
     <td>
       <div class="crm-section">
@@ -45,6 +47,8 @@
 
       </div>
     </td>
+  </tr>
+  <tr>
     <td>
       <div class="crm-section">
           {$form.$contribution_status.html}
@@ -52,85 +56,75 @@
     </td>
     <td>
       <div class="crm-section">
+          {$form.$payment_method.html}
+      </div>
+    </td>
+    <td>
+      <div class="crm-section">
         {$form.$contribution_sum.html}
       </div>
     </td>
+  </tr>
 </table>
-
-<span class="crm-button crm-icon-button">
-  <span class="crm-button-icon"> </span>
-  <input crm-icon="check" name="additional_participation_line" value="add additional Participant" id="additional_participation_line" />
-</span>
-<p></br></p>
 
 <div class="crm-submit-buttons">
 {include file="CRM/common/formButtons.tpl" location="bottom"}
 </div>
 
+{* hidden vars *}
+{$form.cid.html}
 
 <script type="text/javascript">
 
-var initial_line_count = {$line_count};
-var max_line_count     = {$max_line_count};
-var current_line_count = initial_line_count;
+var line_count         = {$line_count};
 var role2amount        = {$role2amount};
-
+var status2label       = {$status2label};
 {literal}
 ////////////////////////////////////////////////////////////////////////////////
-// hide all extra lines
-function showLineCount(line_count) {
-  for (var i = 1; i <= line_count; i++) {
-    cj("tr.registration-participant-line-" + i).show();
-  }
-  for (var i = line_count+1; i <= max_line_count; i++) {
-    cj("tr.registration-participant-line-" + i).hide();
-  }
-}
-
-function increaseLineCount() {
-  current_line_count++;
-  showLineCount(current_line_count);
-}
 
 function updateAmounts() {
-  for (var i = 1; i <= current_line_count; i++) {
+  for (var i = 1; i <= line_count; i++) {
     var role = cj("[name=participant_role_" + i + "]").val();
     cj("[name=participant_amount_" + i + "]").val(role2amount[role]);
   }
   calculate_accumulated_amount();
 }
 
+function updateContribStatus() {
+    var status = cj("[name=contribution_status").val();
+    cj("[name=contribution_status]").val(status);
+}
+
 function register_role_changes() {
-  for (var i = 1; i <= current_line_count; i++) {
+  for (var i = 1; i <= line_count; i++) {
     cj("[name=participant_role_" + i + "]").change(updateAmounts);
   }
 }
 
-function register_add_lineItem_changes() {
-  cj("[name=additional_participation_line]").click(increaseLineCount);
+function register_contribution_status_changes() {
+    cj("[name=contribution_status]").change(updateContribStatus);
 }
 
 function calculate_accumulated_amount() {
   var accumulated_amount = 0;
-  for (var i = 1; i <= current_line_count; i++) {
+  for (var i = 1; i <= line_count; i++) {
     accumulated_amount += Number(cj("[name=participant_amount_" + i + "]").val());
   }
   cj("[name=contribution_sum]").val(accumulated_amount);
 }
+
+function lock_contribution_status() {
+    var contribution_status = cj("#contribution_status").val();
+    if (status2label[contribution_status] == "Cancelled") {
+      cj("#contribution_status").prop("disabled", true);
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
-// call once initially
-showLineCount(initial_line_count);
-
-// cj(".participant-role").change(blaa);
-cj(".participant-role").each(function() {
- // do somethign for each
- // console.log(cj(this).val())
-});
-
 updateAmounts();
 calculate_accumulated_amount();
 register_role_changes();
-register_add_lineItem_changes();
+register_contribution_status_changes();
+lock_contribution_status();
 
 </script>
 {/literal}

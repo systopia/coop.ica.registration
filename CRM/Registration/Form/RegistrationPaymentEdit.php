@@ -12,8 +12,6 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
-define('MAX_LINE_COUNT', 20);
-
 /**
  * TODO DOKU
  *
@@ -22,16 +20,17 @@ define('MAX_LINE_COUNT', 20);
 class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
 
-  protected $cid                  = NULL;
-  protected $contribution         = NULL;
-  protected $new_contribution     = NULL;
-  protected $registration_id      = NULL;
-  protected $line_items           = NULL;
-  protected $role2label           = NULL;
-  protected $role2amount          = NULL;
-  protected $participants         = NULL;
-  protected $participant2label    = NULL;
-  protected $contribStatus2label  = NULL;
+  protected $cid                      = NULL;
+  protected $contribution             = NULL;
+  protected $new_contribution         = NULL;
+  protected $registration_id          = NULL;
+  protected $line_items               = NULL;
+  protected $role2label               = NULL;
+  protected $role2amount              = NULL;
+  protected $participants             = NULL;
+  protected $participant2label        = NULL;
+  protected $contribStatus2label      = NULL;
+  protected $paymentInstrument2label  = NULL;
 
   /**
    * Check
@@ -40,58 +39,33 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // load contribution_id from URL
     $this->cid = CRM_Utils_Request::retrieve('cid', 'Integer');
     if (empty($this->cid)) {
-      // check if POST is set
-      if (isset($_POST['entryURL'])) {
-        error_log("Manually setting CID for testing purposes now :\\");
-        // FIXME: Dirty temporary HACK for testing purposes -.-
-        $this->cid = 95;
-      }
+      CRM_Core_Error::fatal("No contribution ID (cid) given.");
+    } else {
+      $this->add('hidden', 'cid', $this->cid);
     }
-  }
 
-  /**
-   * Create form
-   */
-  public function buildQuickForm() {
-    // line items
-    $this->contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $this->cid));
-    $this->registration_id = $this->contribution['trxn_id'];
-    $this->line_items = civicrm_api3('LineItem', 'get', array(
-      'contribution_id' => $this->cid,
-      'sequential'      => 0,
-      'options.limit'   => 0))['values'];
-
-    // load possible roles
-    $role_query = civicrm_api3('OptionValue', 'get', array(
-      'option_group_id' => 'participant_role',
-      'options.limit'   => 0,
-      'sequential'      => 1,
-      ));
-    $this->role2amount = array();
-    $this->role2label  = array();
-
-    $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
-    foreach ($roles_with_event_fees as $role) {
-      $this->role2label[$role['value']]  = $role['label'];
-      $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['label']);
-    }
+    // initialize variables/data
+    $this->initializeInternalData();
 
     // load participants
     $this->populateParticipants();
 
     // load contribution stati
     $this->setContributionStati();
+  }
+
+  /**
+   * Create form
+   */
+  public function buildQuickForm() {
 
     // generate lines
-    $this->assign('line_numbers',   range(1, MAX_LINE_COUNT));
-    $this->assign('max_line_count', MAX_LINE_COUNT);
-    for ($i=1; $i <= MAX_LINE_COUNT; $i++) {
-      $this->add('select',
+    $this->assign('line_numbers',   range(1, count($this->participants)));
+    for ($i=1; $i <= count($this->participants); $i++) {
+      $this->add('text',
         "participant_id_{$i}",
         'Participant',
-        $this->participant2label,
-        FALSE,
-        array('class' => 'participant-id')
+        'readonly'
       );
 
       $this->add('select',
@@ -104,12 +78,11 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
       $this->add('text',
         "participant_amount_{$i}",
-        'amount'
+        'amount',
+        'readonly'
       );
-
     }
 
-    // TODO: one contribution (sum) line
     $this->add('select',
       "contribution_status",
       'contribution_status',
@@ -124,14 +97,22 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     );
     $this->add('text',
       "contribution_sum",
-      'accumulated_amount'
+      'accumulated_amount',
+      'readonly'
     );
 
-
     $this->assign('role2amount', json_encode($this->role2amount));
-    // FIXE: test code!
+    $this->assign('status2label', json_encode($this->contribStatus2label));
     $this->assign('line_count', count($this->participants));
 
+    //
+    $this->add('select',
+      "payment_method",
+      'Payment Method',
+      $this->paymentInstrument2label,
+      FALSE,
+      array('class' => 'contribution-paymentMethod')
+    );
 
     $this->addButtons(array(
       array(
@@ -165,9 +146,11 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       return;
     }
 
+    $reg_id = $this->findTransactionIndex($this->registration_id);
+
     $participant_selector = CRM_Core_DAO::executeQuery("
       SELECT entity_id AS participant_id
-      FROM {$registration_group_table} WHERE {$registration_id_column} = '{$this->registration_id}'");
+      FROM {$registration_group_table} WHERE {$registration_id_column} = '{$reg_id['transaction_number']}'");
     $participant_ids = array();
     while ($participant_selector->fetch()) {
       $participant_ids[] = $participant_selector->participant_id;
@@ -178,8 +161,12 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'id'            => array('IN' => $participant_ids),
       'options.limit' => 0))['values'];
     }
-    foreach ($this->participants as $particpant) {
-      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
+    foreach ($this->participants as $key => $participant) {
+      if ($participant['participant_status'] != "Cancelled") {
+        $this->participant2label[$participant['id']] = "{$participant['display_name']} [{$participant['id']}]";
+      } else {
+        unset($this->participants[$key]);
+      }
     }
     $this->participant2label[0] = "";
   }
@@ -192,7 +179,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     ))['values'];
     $this->contribStatus2label = array();
     // this should result in a valid contribStatus2label
-    $this->contribStatus2label = CRM_Registration_Configuration::filterContributionStati($stati);
+    $this->contribStatus2label = CRM_Registration_Configuration::filterContributionStati($stati, $this->contribution['contribution_status']);
   }
 
   /**
@@ -206,16 +193,17 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     foreach ($this->line_items as $key => $value) {
       // set participant for lineItem as default value
       $participation_id = $value['entity_id'];
-      $values["participant_id_{$i}"] = $participation_id;
+      $values["participant_id_{$i}"] = $this->participant2label[$value['entity_id']];
       $values["participant_role_{$i}"] = array_search($this->participants[$participation_id]['participant_fee_level'], $this->role2label);
       $i++;
     }
     $not_attending_roleId = array_search("Not Attending", $this->role2label);
-    for (; $i <= MAX_LINE_COUNT; $i++) {
+    for (; $i <= count($this->participants); $i++) {
       $values["participant_id_{$i}"] = 0;
       $values["participant_role_{$i}"] = $not_attending_roleId;
     }
     $values["contribution_status"] = array_search($this->contribution['contribution_status'], $this->contribStatus2label);
+    $values["payment_method"] = $this->contribution['payment_instrument_id'];
     return $values;
   }
 
@@ -237,17 +225,23 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     // create Line Items for new Contribution
     foreach ($participants2role as $id => $value) {
+      $attending = True;
+      if ($value['fee_amount'] == '0' && $this->role2label[$value['fee_level']] == 'Not Attending') {
+        $attending = False;
+      }
       // update Participants fee level&amount
-      $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id);
+      $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id, $attending);
       // get participant data for Line Item creation
       $participant = $this->getParticipant($id);
       // create Line Items
-      $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+      if ($attending) {
+        $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+      }
       // remove old ParticipantPayment and create a new one
-      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
+      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id'], $attending);
     }
     // remove the original Line Item
-    $this->removeOriginalLineItems();
+    $this->removeOriginalLineItem();
     //    set old transaction to cancelled
     $this->cancelOldContribution();
 
@@ -257,10 +251,62 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 ////////////////////////////////////////////////////////////////////////////////
 /// Helper functions internal
 
+  /**
+   * Initiliazes internal data, mappings and arrays for form builder
+   */
+  private function initializeInternalData(){
+    // initialize option Arrays
+    $this->role2amount              = array();
+    $this->role2label               = array();
+    $this->paymentInstrument2label  = array();
+
+    // line items
+    $this->contribution = civicrm_api3('Contribution', 'getsingle', array('id' => $this->cid));
+    $this->registration_id = $this->contribution['trxn_id'];
+    $this->line_items = civicrm_api3('LineItem', 'get', array(
+      'contribution_id' => $this->cid,
+      'sequential'      => 0,
+      'options.limit'   => 0))['values'];
+
+    // load possible roles
+    $role_query = civicrm_api3('OptionValue', 'get', array(
+      'option_group_id' => 'participant_role',
+      'options.limit'   => 0,
+      'sequential'      => 1,
+    ));
+
+    $roles_with_event_fees = CRM_Registration_Configuration::filterNonFeeParticipantRoles($role_query['values']);
+    foreach ($roles_with_event_fees as $role) {
+      $this->role2label[$role['value']]  = $role['label'];
+      $this->role2amount[$role['value']] = CRM_Registration_Configuration::getFeeForRole($role['label']);
+    }
+
+    // load possible payment Instruments
+    $payment_instruments = civicrm_api3('OptionValue', 'get', array(
+      'sequential' => 1,
+      'option_group_id' => "payment_instrument",
+    ))['values'];
+
+    foreach ($payment_instruments as $payment_instrument) {
+      $this->paymentInstrument2label[$payment_instrument['value']] = $payment_instrument['label'];
+    }
+  }
+
+  /**
+   * @param $values
+   * @param $participants2role
+   * @param $total
+   */
   private function createNewContribution($values, &$participants2role, &$total) {
-    for ($i = 1; $i <= MAX_LINE_COUNT; $i++) {
+    for ($i = 1; $i <= count($this->participants); $i++) {
       if ($values["participant_id_{$i}"] != "0") {
-        $participants2role[$values["participant_id_{$i}"]] = array(
+        // get ID from text field
+        $pattern = "/\[(?P<id>[0-9]+)\]$/";
+        $matches = array();
+        if (!preg_match($pattern, $values["participant_id_{$i}"], $matches)) {
+          continue;
+        }
+        $participants2role[$matches['id']] = array(
           "fee_level"   => $values["participant_role_{$i}"],
           "fee_amount"  => $values["participant_amount_{$i}"]
         );
@@ -281,8 +327,8 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'financial_type_id'      => 4, // default (Event Fee)
       'receive_date'           => $this->contribution['receive_date'],
       'is_pay_later'           => $this->contribution['is_pay_later'],
-      'payment_instrument_id'  => $this->contribution['payment_instrument_id'],
-      'contribution_status_id' => $this->contribution['contribution_status_id'],
+      'payment_instrument_id'  => $values['payment_method'],
+      'contribution_status_id' => $values['contribution_status'],
     );
     // and create the contribution
     $this->new_contribution = reset(civicrm_api3('Contribution', 'create', $contribution_data)['values']);
@@ -316,31 +362,31 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $old_contribution_id
    * @param $new_contribution_id
    */
-  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id) {
+  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id, $attending = True) {
     $old_participation_payment = civicrm_api3('ParticipantPayment', 'get', array(
       'participant_id' => $participant_id,
       'contribution_id' => $old_contribution_id,
     ));
-    $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', array(
-      'participant_id' => $participant_id,
-      'contribution_id' => $new_contribution_id,
-    ));
-
-    // if no participation payment is available we can't delete it
-    if (isset($old_participation_payment['id'])) {
-      $result = civicrm_api3('ParticipantPayment', 'delete', array(
-        'id' => $old_participation_payment['id'],
+    // don't create a new participant payment if participant is cancelled/not attending
+    if ($attending) {
+      $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', array(
+        'participant_id' => $participant_id,
+        'contribution_id' => $new_contribution_id,
       ));
-      if ($result['is_error'] != '0') {
-        error_log("Couldn't create new Participation Payment for Participant {$participant_id} for Contribution {$new_contribution_id}");
-      }
+    }
+
+    if ($old_participation_payment['is_error'] == '0' and !empty($old_contribution_id)) {
+      // need to delete Participant Payment manually, otherwise the old contribution is deleted as well,
+      // which is not what we want in this case
+      $query = "DELETE FROM  `civicrm_participant_payment` WHERE `civicrm_participant_payment`.`contribution_id` = {$old_contribution_id}";
+      CRM_Core_DAO::executeQuery($query);
     }
   }
 
   /**
    * Removes the default Line items which is created when creating the contribution
    */
-  private function removeOriginalLineItems() {
+  private function removeOriginalLineItem() {
     // remove default Line Item
     $original_line_item = civicrm_api3(
       'LineItem',
@@ -375,12 +421,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $fee_level
    * @param $id
    */
-  private function updateParticipantData($fee_amount, $fee_level, $id) {
-    $result = civicrm_api3('Participant', 'create', array(
+  private function updateParticipantData($fee_amount, $fee_level, $id, $attending = True) {
+    $params = array(
       'fee_level' => $this->role2label[$fee_level],
       'fee_amount' => $fee_amount,
       'id' => $id,
-    ));
+    );
+    if (!$attending) {
+      $params['status_id'] = "Cancelled";
+    }
+    $result = civicrm_api3('Participant', 'create', $params);
     if ($result['is_error'] != '0') {
       error_log("Couldn't properly update Participant with id {$id} and fee_amount: {$fee_amount} and {$fee_level}" );
     }
@@ -390,16 +440,16 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * Cancel the old contribution
    */
   private function cancelOldContribution() {
-    $result = civicrm_api3('Contribution', 'create', array(
-      'sequential' => 1,
-      'financial_type_id' => "Event Fee",
-      'total_amount' => $this->contribution['total_amount'],
-      'contact_id' => $this->contribution['contact_id'],
-      'id' => $this->contribution['id'],
-      'contribution_status_id' => "Cancelled",
-      'cancel_date' => date('YmdHis', strtotime("now")),
-      'cancel_reason' => "manually edited by coop.ica.register extension",
-    ));
+    $arguments = array(
+      'financial_type_id'       => "4",
+      'id'                      => $this->contribution['id'],
+      'contribution_status_id'  => "3",
+      'currency'                => $this->contribution['currency'],
+      'cancel_date'             => date('YmdHis', strtotime("now")),
+      'cancel_reason'           => "manually edited by coop.ica.register extension",
+      ''
+    );
+    $result = civicrm_api3('Contribution', 'create', $arguments);
   }
 
 }

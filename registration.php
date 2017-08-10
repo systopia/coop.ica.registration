@@ -174,6 +174,13 @@ function registration_civicrm_links($op, $objectName, $objectId, &$links, &$mask
           'qs'    => "cid={$objectId}",
         );
     }
+    // Add links for Contribution Registration Edit form:
+    $links[] = array(
+      'name'      => ts('Adjust Invoice'),
+      'title'     => ts('Adjust Invoice'),
+      'url'       => 'civicrm/registation/editpayment',
+      'qs'        =>"cid={$objectId}",
+    );
   }
 }
 
