@@ -166,8 +166,12 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'id'            => array('IN' => $participant_ids),
       'options.limit' => 0))['values'];
     }
-    foreach ($this->participants as $particpant) {
-      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']}) [{$particpant['id']}]";
+    foreach ($this->participants as $key => $participant) {
+      if ($participant['participant_status'] != "Cancelled") {
+        $this->participant2label[$participant['id']] = "{$participant['display_name']} ({$participant['participant_fee_level']}) [{$participant['id']}]";
+      } else {
+        unset($this->participants[$key]);
+      }
     }
     $this->participant2label[0] = "";
   }
