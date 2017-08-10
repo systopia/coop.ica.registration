@@ -167,7 +167,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'options.limit' => 0))['values'];
     }
     foreach ($this->participants as $particpant) {
-      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']})";
+      $this->participant2label[$particpant['id']] = "{$particpant['display_name']} ({$particpant['participant_fee_level']}) [{$participant['id']}";
     }
     $this->participant2label[0] = "";
   }
