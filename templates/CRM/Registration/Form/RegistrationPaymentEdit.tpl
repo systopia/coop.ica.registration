@@ -96,7 +96,7 @@ function updateContribStatus() {
 }
 
 function register_role_changes() {
-  for (var i = 1; i <= current_line_count; i++) {
+  for (var i = 1; i <= line_count; i++) {
     cj("[name=participant_role_" + i + "]").change(updateAmounts);
   }
 }
