@@ -62,12 +62,10 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // generate lines
     $this->assign('line_numbers',   range(1, count($this->participants)));
     for ($i=1; $i <= count($this->participants); $i++) {
-      $this->add('select',
+      $this->add('text',
         "participant_id_{$i}",
         'Participant',
-        $this->participant2label,
-        FALSE,
-        array('class' => 'participant-id', 'disabled' => 'disabled')
+        'readonly'
       );
 
       $this->add('select',
@@ -164,7 +162,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     }
     foreach ($this->participants as $key => $participant) {
       if ($participant['participant_status'] != "Cancelled") {
-        $this->participant2label[$participant['id']] = "{$participant['display_name']} ({$participant['participant_fee_level']}) [{$participant['id']}]";
+        $this->participant2label[$participant['id']] = "{$participant['display_name']} [{$participant['id']}]";
       } else {
         unset($this->participants[$key]);
       }
@@ -194,7 +192,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     foreach ($this->line_items as $key => $value) {
       // set participant for lineItem as default value
       $participation_id = $value['entity_id'];
-      $values["participant_id_{$i}"] = $participation_id;
+      $values["participant_id_{$i}"] = $this->participant2label[$value['entity_id']];
       $values["participant_role_{$i}"] = array_search($this->participants[$participation_id]['participant_fee_level'], $this->role2label);
       $i++;
     }
@@ -301,7 +299,13 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   private function createNewContribution($values, &$participants2role, &$total) {
     for ($i = 1; $i <= count($this->participants); $i++) {
       if ($values["participant_id_{$i}"] != "0") {
-        $participants2role[$values["participant_id_{$i}"]] = array(
+        // get ID from text field
+        $pattern = "/\[(?P<id>[0-9]+)\]$/";
+        $matches = array();
+        if (!preg_match($pattern, $values["participant_id_{$i}"], $matches)) {
+          continue;
+        }
+        $participants2role[$matches['id']] = array(
           "fee_level"   => $values["participant_role_{$i}"],
           "fee_amount"  => $values["participant_amount_{$i}"]
         );
