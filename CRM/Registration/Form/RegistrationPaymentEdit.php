@@ -102,6 +102,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     );
 
     $this->assign('role2amount', json_encode($this->role2amount));
+    $this->assign('status2label', json_encode($this->contribStatus2label));
     $this->assign('line_count', count($this->participants));
 
     //

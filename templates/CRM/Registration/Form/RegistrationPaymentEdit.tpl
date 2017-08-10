@@ -76,9 +76,9 @@
 
 <script type="text/javascript">
 
-var line_count = {$line_count};
+var line_count         = {$line_count};
 var role2amount        = {$role2amount};
-
+var status2label       = {$status2label};
 {literal}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,11 +112,19 @@ function calculate_accumulated_amount() {
   }
   cj("[name=contribution_sum]").val(accumulated_amount);
 }
+
+function lock_contribution_status() {
+    var contribution_status = cj("#contribution_status").val();
+    if (status2label[contribution_status] == "Cancelled") {
+      cj("#contribution_status").prop("disabled", true);
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
 updateAmounts();
 calculate_accumulated_amount();
 register_role_changes();
 register_contribution_status_changes();
+lock_contribution_status();
 
 </script>
 {/literal}
