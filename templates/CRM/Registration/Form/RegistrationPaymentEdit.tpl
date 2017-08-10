@@ -67,12 +67,6 @@
   </tr>
 </table>
 
-<span class="crm-button crm-icon-button">
-  <span class="crm-button-icon"> </span>
-  <input crm-icon="check" name="additional_participation_line" value="add additional Participant" id="additional_participation_line" />
-</span>
-<p></br></p>
-
 <div class="crm-submit-buttons">
 {include file="CRM/common/formButtons.tpl" location="bottom"}
 </div>
@@ -82,30 +76,14 @@
 
 <script type="text/javascript">
 
-var initial_line_count = {$line_count};
-var max_line_count     = {$max_line_count};
-var current_line_count = initial_line_count;
+var line_count = {$line_count};
 var role2amount        = {$role2amount};
 
 {literal}
 ////////////////////////////////////////////////////////////////////////////////
-// hide all extra lines
-function showLineCount(line_count) {
-  for (var i = 1; i <= line_count; i++) {
-    cj("tr.registration-participant-line-" + i).show();
-  }
-  for (var i = line_count+1; i <= max_line_count; i++) {
-    cj("tr.registration-participant-line-" + i).hide();
-  }
-}
-
-function increaseLineCount() {
-  current_line_count++;
-  showLineCount(current_line_count);
-}
 
 function updateAmounts() {
-  for (var i = 1; i <= current_line_count; i++) {
+  for (var i = 1; i <= line_count; i++) {
     var role = cj("[name=participant_role_" + i + "]").val();
     cj("[name=participant_amount_" + i + "]").val(role2amount[role]);
   }
@@ -123,10 +101,6 @@ function register_role_changes() {
   }
 }
 
-function register_add_lineItem_changes() {
-  cj("[name=additional_participation_line]").click(increaseLineCount);
-}
-
 function register_contribution_status_changes() {
     cj("[name=contribution_status]").change(updateContribStatus);
 }
@@ -139,19 +113,9 @@ function calculate_accumulated_amount() {
   cj("[name=contribution_sum]").val(accumulated_amount);
 }
 ////////////////////////////////////////////////////////////////////////////////
-// call once initially
-showLineCount(initial_line_count);
-
-// cj(".participant-role").change(blaa);
-cj(".participant-role").each(function() {
- // do somethign for each
- // console.log(cj(this).val())
-});
-
 updateAmounts();
 calculate_accumulated_amount();
 register_role_changes();
-register_add_lineItem_changes();
 register_contribution_status_changes();
 
 </script>

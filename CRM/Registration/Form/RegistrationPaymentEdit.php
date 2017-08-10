@@ -12,8 +12,6 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
-define('MAX_LINE_COUNT', 20);
-
 /**
  * TODO DOKU
  *
@@ -62,15 +60,14 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   public function buildQuickForm() {
 
     // generate lines
-    $this->assign('line_numbers',   range(1, MAX_LINE_COUNT));
-    $this->assign('max_line_count', MAX_LINE_COUNT);
-    for ($i=1; $i <= MAX_LINE_COUNT; $i++) {
+    $this->assign('line_numbers',   range(1, count($this->participants)));
+    for ($i=1; $i <= count($this->participants); $i++) {
       $this->add('select',
         "participant_id_{$i}",
         'Participant',
         $this->participant2label,
         FALSE,
-        array('class' => 'participant-id')
+        array('class' => 'participant-id', 'disabled' => 'disabled')
       );
 
       $this->add('select',
@@ -86,7 +83,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
         'amount',
         'readonly'
       );
-
     }
 
     $this->add('select',
@@ -203,7 +199,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $i++;
     }
     $not_attending_roleId = array_search("Not Attending", $this->role2label);
-    for (; $i <= MAX_LINE_COUNT; $i++) {
+    for (; $i <= count($this->participants); $i++) {
       $values["participant_id_{$i}"] = 0;
       $values["participant_role_{$i}"] = $not_attending_roleId;
     }
@@ -303,7 +299,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $total
    */
   private function createNewContribution($values, &$participants2role, &$total) {
-    for ($i = 1; $i <= MAX_LINE_COUNT; $i++) {
+    for ($i = 1; $i <= count($this->participants); $i++) {
       if ($values["participant_id_{$i}"] != "0") {
         $participants2role[$values["participant_id_{$i}"]] = array(
           "fee_level"   => $values["participant_role_{$i}"],
