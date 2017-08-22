@@ -89,6 +89,7 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
     'option.limit'    => 0))['values'];
   foreach ($line_items as &$line_item) {
     $line_item['subTotal'] = $line_item['line_total'];
+    $line_item['qty']      = (int) $line_item['qty'];
   }
   $tplParams['lineItem'] = $line_items;
 
