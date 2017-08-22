@@ -165,9 +165,9 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       'id'            => array('IN' => $participant_ids),
       'options.limit' => 0))['values'];
     }
-    foreach ($this->participants as $key => $participant) {
-      if ($participant['participant_status'] != "Cancelled") {
-        $this->participant2label[$participant['id']] = "{$participant['display_name']} [{$participant['id']}]";
+    foreach ($this->participants as $key => $p) {
+      if ($p['participant_status'] != "Cancelled") {
+        $this->participant2label[$p['id']] = "{$p['display_name']} [{$p['id']}]";
       } else {
         unset($this->participants[$key]);
       }
@@ -194,10 +194,10 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
 
     // FIXME: example code
     $i = 1;
-    foreach ($this->line_items as $key => $value) {
+    foreach ($this->participants as $participant) {
       // set participant for lineItem as default value
-      $values["participant_id_{$i}"] = $this->participant2label[$value['entity_id']];
-      $values["participant_role_{$i}"] = array_search(CRM_Registration_Configuration::getRoleFromFee($value['line_total']), $this->role2label);
+      $values["participant_id_{$i}"] = $this->participant2label[$participant['id']];
+      $values["participant_role_{$i}"] = array_search(CRM_Registration_Configuration::getRoleFromFee($participant['participant_fee_level']), $this->role2label);
       $i++;
     }
 
