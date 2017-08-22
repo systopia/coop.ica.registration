@@ -15,36 +15,57 @@
 
 class CRM_Registration_Configuration {
 
+  /**
+   * @var static var for role => fee mapping.
+   * Additional values can be added here if needed
+   */
+  static $role_fee_mapping = array(
+    'International Member'  => 750.00,
+    'Partner'               => 100.00,
+    'Youth'                 => 200.00,
+    'Participant'           => 950.00,
+    'Not Attending'         => 0.00,
+  );
+
+  /**
+   * @var static array with the available roles
+   * Additional values can be added here if needed
+   */
+  static $roles = array(
+    0 => 'International Member',
+    1 => 'Partner',
+    2 => 'Youth',
+    3 => 'Participant',
+  );
+
+  /**
+   * @param $role_label
+   *
+   * @return null
+   */
   public static function getFeeForRole($role_label) {
-    $role_array = array(
-      'International Member'  => 750.00,
-      'Partner'               => 100.00,
-      'Youth'                 => 200.00,
-      'Participant'           => 950.00,
-      'Not Attending'         => 0.00,
-    );
-    return $role_array[$role_label];
+    if (empty(self::$role_fee_mapping[$role_label])) {
+      error_log("Given role ('{$role_label}') is invalid. ");
+      return NULL;
+    }
+    return self::$role_fee_mapping[$role_label];
   }
 
   /**
-   * Parse query array from civi api and filter out non fee Participant roles.
-   * returns array
+   * @param $fee
+   *
+   * @return false|int|string
    */
-  public static function filterNonFeeParticipantRoles($roles) {
-    $role_array = array(
-      'International Member',
-      'Partner',
-      'Youth',
-      'Participant',
-      'Not Attending',
-    );
-    $result = array();
-    foreach ($roles as $role) {
-      if (in_array($role['label'], $role_array)) {
-        $result[] = $role;
-      }
-    }
-    return $result;
+  public static function getRoleFromFee($fee) {
+    return array_search($fee, self::$role_fee_mapping);
+  }
+
+  /**
+   * Statically returns an array with the roles
+   * @return array
+   */
+  public static function filterNonFeeParticipantRoles() {
+    return self::$roles;
   }
 
   /**
