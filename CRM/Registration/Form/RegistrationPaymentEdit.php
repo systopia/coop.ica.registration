@@ -206,10 +206,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     return $values;
   }
 
-  // public function validate()
-
-
-
   public function postProcess() {
     $values = $this->exportValues();
 
@@ -238,6 +234,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     //    set old transaction to cancelled
     $this->cancelOldContribution();
 
+    CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/contact/view/contribution', "action=view&reset=1&id={$this->new_contribution['id']}&cid={$this->new_contribution['contact_id']}"));
     parent::postProcess();
   }
 
