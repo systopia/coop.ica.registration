@@ -197,7 +197,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     foreach ($this->participants as $participant) {
       // set participant for lineItem as default value
       $values["participant_id_{$i}"] = $this->participant2label[$participant['id']];
-      $values["participant_role_{$i}"] = array_search(CRM_Registration_Configuration::getRoleFromFee($participant['participant_fee_level']), $this->role2label);
+      $values["participant_role_{$i}"] = array_search($participant['participant_fee_level'], $this->role2label);
       $i++;
     }
 
@@ -348,17 +348,42 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
   private function getfee_levelRoles_for_participant($participant) {
 
     $result = array();
-    if ($participant['participant_fee_level'] == 'Partner') {
-      $result[array_search($participant['participant_fee_level'], $this->role2label)] = 'Partner';
-    } else {
-      // filter out the partner label
-      foreach ($this->role2label as $key => $label) {
-        if ($label != 'Partner') {
-          $result[$key] = $label;
+    if (is_array($participant['participant_role'])) {
+      foreach ($participant['participant_role'] as $role) {
+        switch ($role) {
+          case 'Partner':
+            $result[array_search($participant['participant_fee_level'], $this->role2label)] = 'Partner';
+            return $result;
+          case 'Participant':
+            foreach ($this->role2label as $key => $label) {
+              if ($label != 'Partner') {
+                $result[$key] = $label;
+              }
+            }
+            return $result;
+          default:
+            continue;
         }
       }
+    } else {
+      switch ($participant['participant_role']) {
+        case 'Partner':
+          $result[array_search($participant['participant_fee_level'], $this->role2label)] = 'Partner';
+          return $result;
+        case 'Participant':
+          foreach ($this->role2label as $key => $label) {
+            if ($label != 'Partner') {
+              $result[$key] = $label;
+            }
+          }
+          return $result;
+        default:
+          error_log("Invalid Participant role.");
+          return NULL;
+      }
     }
-    return $result;
+    error_log("Invalid Role in 'particpant_role' for ID '{$participant['id']}'");
+    return NULL;
   }
 
   /**
