@@ -82,6 +82,16 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
     $tplParams['cancel_date']  = date('F j, Y', strtotime($contributionBAO->cancel_date));
   }
 
+  // 4) load and overwrite line items (see ICA-5311)
+  $line_items = civicrm_api3('LineItem', 'get', array(
+    'contribution_id' => $contributionBAO->id,
+    'sequential'      => 0,
+    'option.limit'    => 0))['values'];
+  foreach ($line_items as &$line_item) {
+    $line_item['subTotal'] = $line_item['line_total'];
+  }
+  $tplParams['lineItem'] = $line_items;
+
 
   // FIND and add billing address
   $billing_address = NULL;
