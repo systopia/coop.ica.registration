@@ -83,15 +83,18 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
   }
 
   // 4) load and overwrite line items (see ICA-5311)
+  $subTotal = 0.0;
   $line_items = civicrm_api3('LineItem', 'get', array(
     'contribution_id' => $contributionBAO->id,
     'sequential'      => 0,
     'option.limit'    => 0))['values'];
   foreach ($line_items as &$line_item) {
+    $subTotal += $line_item['line_total'];
     $line_item['subTotal'] = $line_item['line_total'];
     $line_item['qty']      = (int) $line_item['qty'];
   }
   $tplParams['lineItem'] = $line_items;
+  $tplParams['subTotal'] = $subTotal;
 
 
   // FIND and add billing address
