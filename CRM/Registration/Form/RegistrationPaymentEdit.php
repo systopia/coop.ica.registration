@@ -197,7 +197,13 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     foreach ($this->participants as $participant) {
       // set participant for lineItem as default value
       $values["participant_id_{$i}"] = $this->participant2label[$participant['id']];
-      $values["participant_role_{$i}"] = array_search($participant['participant_fee_level'], $this->role2label);
+      $role = $this->getRole($participant['participant_role']);
+      $fee_level = array_search($participant['participant_fee_level'], $this->role2label);
+      if (!isset($fee_level)) {
+        $values["participant_role_{$i}"] = array_search($role, $this->role2label);
+      } else {
+        $values["participant_role_{$i}"] = $fee_level;
+      }
       $i++;
     }
 
@@ -337,6 +343,32 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     );
   }
 
+  private function getRole($role) {
+
+    if (is_array($role)) {
+      foreach ($role as $r) {
+        switch ($r) {
+          case 'Partner':
+            return "Partner";
+          case 'Participant':
+            return "Participant";
+          default:
+            continue;
+        }
+      }
+    } else {
+      switch ($role) {
+        case 'Partner':
+          return "Partner";
+        case 'Participant':
+          return "Participant";
+        default:
+          continue;
+      }
+    }
+    return "";
+  }
+
   /**
    * @param $participant
    *
@@ -349,7 +381,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       foreach ($participant['participant_role'] as $role) {
         switch ($role) {
           case 'Partner':
-            $result[array_search($participant['participant_fee_level'], $this->role2label)] = 'Partner';
+            $result[array_search('Partner', $this->role2label)] = 'Partner';
             return $result;
           case 'Participant':
             foreach ($this->role2label as $key => $label) {
@@ -365,7 +397,7 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     } else {
       switch ($participant['participant_role']) {
         case 'Partner':
-          $result[array_search($participant['participant_fee_level'], $this->role2label)] = 'Partner';
+          $result[array_search('Partner', $this->role2label)] = 'Partner';
           return $result;
         case 'Participant':
           foreach ($this->role2label as $key => $label) {
