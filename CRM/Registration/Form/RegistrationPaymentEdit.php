@@ -63,10 +63,15 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     $this->assign('line_numbers',   range(1, count($this->participants)));
     $i = 1;
     foreach ($this->participants as $participant) {
-      $this->add('text',
+      $url = CRM_Utils_System::url('civicrm/contact/view/participant',
+        "action=view&reset=1&id={$participant['id']}&cid={$participant['contact_id']}&context=home", false, NULL, false);
+      $name = $this->participant2label[$participant['id']];
+      $this->add('link',
         "participant_id_{$i}",
-        'Participant',
-        'readonly'
+        "Participant",
+        $url,
+        "True",
+        $name
       );
 
       $fee_level_roles = $this->getfee_levelRoles_for_participant($participant);
@@ -195,8 +200,6 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
     // FIXME: example code
     $i = 1;
     foreach ($this->participants as $participant) {
-      // set participant for lineItem as default value
-      $values["participant_id_{$i}"] = $this->participant2label[$participant['id']];
       $role = $this->getRole($participant['participant_role']);
       $fee_level = array_search($participant['participant_fee_level'], $this->role2label);
       if (!isset($fee_level)) {
