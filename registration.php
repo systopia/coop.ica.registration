@@ -277,6 +277,43 @@ function registration_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
 }
 
 /**
+ * Implements hook_civicrm_buildForm()
+ * @param $formName
+ * @param $form
+ */
+function registration_civicrm_buildForm($formName, &$form) {
+  error_log("Form: {$formName}");
+  switch ($formName) {
+    case 'CRM_Event_Form_ParticipantView':
+      require_once 'CRM/Registration/GUI_changes.php';
+      CRM_Registration_Gui_changes::buildForm_hook_participant_view($formName, $form);
+      break;
+    case 'CRM_Event_Form_Participant':
+      require_once 'CRM/Registration/GUI_changes.php';
+      CRM_Registration_Gui_changes::buildForm_hook_participant($formName, $form);
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * Hook implementation: Inject JS code adjusting summary view
+ */
+function registration_civicrm_pageRun(&$page) {
+  $page_name = $page->getVar('_name');
+  error_log("Page: {$page_name}");
+  switch ($page_name) {
+    case 'CRM_Contribute_Page_PaymentInfo':
+//      require_once 'CRM/Registration/GUI_changes.php';
+//      CRM_Registration_Gui_changes::page_run_hook($page);
+//      break;
+    default:
+      break;
+  }
+}
+
+/**
  * Implements hook_civicrm_managed().
  *
  * Generate a list of entities to create/deactivate/delete when this module
