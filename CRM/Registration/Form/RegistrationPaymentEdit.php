@@ -230,10 +230,17 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
       $this->updateParticipantData($value['fee_amount'], $value['fee_level'], $id);
       // get participant data for Line Item creation
       $participant = $this->getParticipant($id);
-      // create Line Items
-      $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
-      // remove old ParticipantPayment and create a new one
-      $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
+
+      // FixMe
+      if ($participant['participant_fee_level'] != 'Not Attending' ) {
+        // create Line items
+        $processor->createRegistrationLineItem($participant, $this->new_contribution['id'], $this->new_contribution['financial_type_id']);
+        $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id']);
+      } else {
+        // remove old ParticipantPayment and create a new one
+        $this->updateParticipantPayment($id, $this->contribution['id'], $this->new_contribution['id'], True);
+      }
+
     }
     // remove the original Line Item
     $this->removeOriginalLineItem();
@@ -288,12 +295,18 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    */
   private function createNewContribution($values, &$participants2role, &$total) {
     for ($i = 1; $i <= count($this->participants); $i++) {
-      if ($values["participant_id_{$i}"] != "0") {
+      if (isset($values["participant_id_{$i}"]) && $values["participant_id_{$i}"] != "0") {
         // get ID from text field
         $pattern = "/\[(?P<id>[0-9]+)\]$/";
         $matches = array();
         if (!preg_match($pattern, $values["participant_id_{$i}"], $matches)) {
           continue;
+        }
+//        if (!isset($values["participant_role_{$i}"]) || $values["participant_amount_{$i}"]) {
+//          continue;
+//        }
+        if (!isset($values["participant_role_{$i}"])) {
+          $values["participant_role_{$i}"] = 'Not Attending';
         }
         $participants2role[$matches['id']] = array(
           "fee_level"   => $values["participant_role_{$i}"],
@@ -423,15 +436,18 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $old_contribution_id
    * @param $new_contribution_id
    */
-  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id) {
+  private function updateParticipantPayment($participant_id, $old_contribution_id, $new_contribution_id, $delete_only = False) {
     $old_participation_payment = civicrm_api3('ParticipantPayment', 'get', array(
       'participant_id' => $participant_id,
       'contribution_id' => $old_contribution_id,
     ));
-    $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', array(
-      'participant_id' => $participant_id,
-      'contribution_id' => $new_contribution_id,
-    ));
+
+    if (!$delete_only) {
+      $new_participation_payment = civicrm_api3('ParticipantPayment', 'create', [
+        'participant_id' => $participant_id,
+        'contribution_id' => $new_contribution_id,
+      ]);
+    }
 
     if ($old_participation_payment['is_error'] == '0' and !empty($old_contribution_id)) {
       // need to delete Participant Payment manually, otherwise the old contribution is deleted as well,
@@ -480,11 +496,28 @@ class CRM_Registration_Form_RegistrationPaymentEdit extends CRM_Core_Form {
    * @param $id
    */
   private function updateParticipantData($fee_amount, $fee_level, $id) {
-    $params = array(
-      'fee_level' => $this->role2label[$fee_level],
-      'fee_amount' => $fee_amount,
-      'id' => $id,
-    );
+    if (empty($fee_amount) && empty($fee_level)) {
+      $params = array(
+        'fee_level' => 'Not Attending',
+        'fee_amount' => CRM_Registration_Configuration::$role_fee_mapping['Not Attending'],
+        'id' => $id
+      );
+    } else {
+      // FixMe:
+      // This is a fix. If a Role is not available (Participant changed to Not Attending
+      // and Participant Role is != participant/Partner, the dropdown for the role is empty, unset
+      // For now we manually add 'Not Attending'
+      if (!isset($this->role2label[$fee_level])) {
+        $level = 'Not Attending';
+      } else {
+        $level = $this->role2label[$fee_level];
+      }
+      $params = array(
+        'fee_level' => $level,
+        'fee_amount' => $fee_amount,
+        'id' => $id,
+      );
+    }
 
     $result = civicrm_api3('Participant', 'create', $params);
     if ($result['is_error'] != '0') {
