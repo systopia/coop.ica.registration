@@ -24,6 +24,7 @@ class CRM_Registration_Configuration {
     'Partner'               => 100.00,
     'Youth'                 => 200.00,
     'Participant'           => 950.00,
+    'Local Member'          => 250.00,
     'Not Attending'         => 0.00,
   );
 
@@ -36,6 +37,7 @@ class CRM_Registration_Configuration {
     1 => 'Partner',
     2 => 'Youth',
     3 => 'Participant',
+    4 => 'Local Member'
   );
 
   /**
