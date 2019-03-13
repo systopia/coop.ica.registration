@@ -12,9 +12,6 @@
 | written permission from the original author(s).        |
 +--------------------------------------------------------*/
 
-define('ICA_EVENT_SUBMISSION_PREFIX',   'GA2017');
-define('ICA_EVENT_CONFIRMATION_SENDER', '"International Co-operative Alliance" <secretariat.malaysia2017@ica.coop>');
-define('ICA_EVENT_CONFIRMATION_BCC',    'secretariat.malaysia2017@ica.coop');
 define('ICA_LANGUAGES_CUSTOM_FIELD',    '7');
 define('ICA_COUNTRY_CUSTOM_FIELD',      '8');
 
@@ -95,9 +92,14 @@ class CRM_Registration_Processor {
     // derive some values
     $pdata['custom_registration_id']   = $this->data['registration_id'];
     $pdata['register_date']            = $this->data['submission_date'];
-    $pdata['event_id']                 = $this->data['event_id'];
     $pdata['custom_created_version']   = $this->data['created_version'];
     $pdata['custom_validation_status'] = 1;  // pending
+
+    if (!empty($pdata['event_id'])) {
+      $pdata['event_id'] = (int) $this->data['event_id'];
+    } else {
+      $pdata['event_id'] = (int) CRM_Registration_Configuration::getSetting('default_event');
+    }
 
     if ($master_participant) {
       $pdata['registered_by_id']    = $master_participant['participant_id'];
@@ -369,7 +371,8 @@ class CRM_Registration_Processor {
     $name  = $participant['first_name'] . ' ' . $participant['last_name'];
 
     // NOW: find the right template
-    $template_id = self::loadTemplate(ICA_EVENT_SUBMISSION_PREFIX . ' Registration Confirmation ', $this->data['registration_language']);
+    $prefix = CRM_Registration_Configuration::getSetting('registration_prefix');
+    $template_id = self::loadTemplate($prefix . ' Registration Confirmation ', $this->data['registration_language']);
     if (empty($template_id)) return;
 
     // prepare additional participants
@@ -405,11 +408,11 @@ class CRM_Registration_Processor {
       'contact_id'      => $participant['contact_id'],
       'to_name'         => $participant['first_name'] . ' ' . $participant['last_name'],
       'to_email'        => $participant['email'],
-      'from'            => ICA_EVENT_CONFIRMATION_SENDER,
+      'from'            => CRM_Registration_Configuration::getSetting('confirmation_sender'),
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       'attachments'     => array($attachment),
-      'bcc'             => ICA_EVENT_CONFIRMATION_BCC,
+      'bcc'             => CRM_Registration_Configuration::getSetting('confirmation_bcc'),
       );
 
     if (!empty($this->data['organisation']['billing']['email'])) {
@@ -487,11 +490,12 @@ class CRM_Registration_Processor {
 
     // record all email addresses the mail is sent to
     $sent_to[] = $contact['email'];
-    $sent_to[] = ICA_EVENT_CONFIRMATION_BCC;
+    $sent_to[] = CRM_Registration_Configuration::getSetting('confirmation_bcc');
 
     // find the right email template
     $registration_language = CRM_Utils_Array::value("custom_{$registration_language_customfield['id']}", $participant, 'EN');
-    $template_id = self::loadTemplate(ICA_EVENT_SUBMISSION_PREFIX . ' Payment Completion ', $registration_language);
+    $prefix = CRM_Registration_Configuration::getSetting('registration_prefix');
+    $template_id = self::loadTemplate($prefix . ' Payment Completion ', $registration_language);
     if (!$template_id) {
       throw new Exception("Message template not found!");
     }
@@ -520,11 +524,11 @@ class CRM_Registration_Processor {
       'contact_id'      => $contact['id'],
       'to_name'         => $contact['first_name'] . ' ' . $contact['last_name'],
       'to_email'        => $contact['email'],
-      'from'            => ICA_EVENT_CONFIRMATION_SENDER,
+      'from'            => CRM_Registration_Configuration::getSetting('confirmation_sender'),
       'reply_to'        => "do-not-reply@$emailDomain",
       'template_params' => $smarty_variables,
       'attachments'     => array($attachment),
-      'bcc'             => ICA_EVENT_CONFIRMATION_BCC,
+      'bcc'             => CRM_Registration_Configuration::getSetting('confirmation_bcc'),
       );
 
     if (!empty($billing_email)) {

@@ -81,7 +81,7 @@ function _civicrm_api3_registration_create_spec(&$params) {
     );
   $params['event_id'] = array(
     'name'         => 'event_id',
-    'api.required' => 1,
+    'api.required' => 0,
     'title'        => 'Event ID',
     'description'  => 'The event you want to register participants for',
     );

@@ -27,7 +27,6 @@ function civicrm_api3_registration_test($params) {
   $data = json_decode('{
        "submission_date":"20160822094006",
        "registration_id":"GA2017-999-09",
-       "event_id":"1",
        "payment_mode":"offline",
        "registration_language":"English",
        "additional_participants":[

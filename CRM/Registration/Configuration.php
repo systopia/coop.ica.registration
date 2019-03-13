@@ -15,6 +15,8 @@
 
 class CRM_Registration_Configuration {
 
+  protected static $_settings = NULL;
+
   /**
    * @var static var for role => fee mapping.
    * Additional values can be added here if needed
@@ -39,6 +41,45 @@ class CRM_Registration_Configuration {
     3 => 'Participant',
     4 => 'Local Member'
   );
+
+  /**
+   * Get a sigle setting
+   *
+   * @param $key     string setting name
+   * @param $default string setting default value
+   * @return mixed value
+   */
+  public static function getSetting($key, $default = NULL) {
+    $settings = self::getSettings();
+    return CRM_Utils_Array::value($key, $settings, $default);
+  }
+
+  /**
+   * Get the Registration settings
+   *
+   * @return array settings
+   */
+  public static function getSettings() {
+    if (self::$_settings === NULL) {
+      $settings = CRM_Core_BAO_Setting::getItem('coop.ica.registration', 'ica_registration');
+      if (empty($settings) || !is_array($settings)) {
+        self::$_settings = [];
+      } else {
+        self::$_settings = $settings;
+      }
+    }
+    return self::$_settings;
+  }
+
+  /**
+   * Update the Registration settings
+   *
+   * @param  array settings
+   */
+  public static function setSettings($settings) {
+    CRM_Core_BAO_Setting::setItem($settings, 'coop.ica.registration', 'ica_registration');
+    self::$_settings = $settings;
+  }
 
   /**
    * @param $role_label
