@@ -22,11 +22,12 @@ class CRM_Registration_Configuration {
    * Additional values can be added here if needed
    */
   static $role_fee_mapping = array(
-    'International Member'  => 750.00,
-    'Partner'               => 100.00,
-    'Youth'                 => 200.00,
-    'Participant'           => 950.00,
+    'International Member'  => 650.00,
+    'Partner'               => 250.00,
+    'Youth'                 => 250.00,
+    'Participant'           => 850.00,
     'Local Member'          => 250.00,
+    'Interpreter'           => 250.00,
     'Not Attending'         => 0.00,
   );
 
