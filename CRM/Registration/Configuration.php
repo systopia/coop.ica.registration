@@ -15,6 +15,8 @@
 
 class CRM_Registration_Configuration {
 
+  public static $setting_fields = ['default_event', 'registration_prefix', 'confirmation_sender', 'confirmation_bcc'];
+
   protected static $_settings = NULL;
 
   /**
@@ -78,7 +80,15 @@ class CRM_Registration_Configuration {
    * @param  array settings
    */
   public static function setSettings($settings) {
-    CRM_Core_BAO_Setting::setItem($settings, 'coop.ica.registration', 'ica_registration');
+    // restrict to allowed values
+    $filtered_settings = [];
+    foreach (self::$setting_fields as $field) {
+      if (array_key_exists($field, $settings)) {
+        $filtered_settings[$field] = $settings[$field];
+      }
+    }
+
+    CRM_Core_BAO_Setting::setItem($filtered_settings, 'coop.ica.registration', 'ica_registration');
     self::$_settings = $settings;
   }
 

@@ -78,6 +78,12 @@ class CRM_Registration_Form_Settings extends CRM_Core_Form {
 
   public function postProcess() {
     $values = $this->exportValues();
+
+    // clean up values
+    unset($values['qfKey'], $values['entryURL'], $values['_qf_default'], $values['_qf_Settings_submit']);
+    $values['confirmation_sender'] = decode_entities($values['confirmation_sender']);
+
+    //CRM_Core_Error::debug_log_message("Settings: " . json_encode($values));
     CRM_Registration_Configuration::setSettings($values);
     CRM_Core_Session::setStatus(E::ts('Settings stored'));
 
