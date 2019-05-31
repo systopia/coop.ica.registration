@@ -12,7 +12,8 @@ This extension processes event registrations for the general assembly.
  2. Create templates:
     1. "{PREFIX} Registration Confirmation {LANG}", e.g. ``GA2017 Registration Confirmation EN`` 
     1. "{PREFIX} Payment Completion {LANG}", e.g. ``GA2019 Payment Completion ES``
- 1. Adjust pricing structure
+ 1. Adjust pricing structure (``CRM_Registration_Configuration``)
+ 1. Add new custom fields (sconfig XML)
  
  
  ### Webform (``ica_event_cmrf_connector`` + theme + configuration)
@@ -20,9 +21,8 @@ This extension processes event registrations for the general assembly.
  1. ``drush up``
  1. uninstall + re-install cmrf + ica_event_cmrf_connector modules
  1. Adjust configuration in ``ica_event_cmrf_connector/includes/webform_integration.inc``
- 1. Adjust pricing structure
  1. Clean out webform submissions
  1. Adjust webform title / content
  1. Make sure CMRF connection profile still valid
- 1. Create products with new prefix
+ 1. Create products with new prefix and new pricing
  1. ``drush cc all`` 
