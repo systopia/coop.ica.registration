@@ -14,7 +14,7 @@
 
 require_once 'registration.civix.php';
 
-define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2017-');
+define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2019-');
 
 /**
  * Implements hook_civicrm_invoiceNumber().
