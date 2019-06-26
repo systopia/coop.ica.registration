@@ -4,11 +4,9 @@
 <p>Error was "{$error}"</p>
 {else}
 <h3>Confirmation Email Sent</h3>
-<p>
-The email was sent to the following email addresses:
-  {foreach from=$sent_to item=email}
+<p>The email was sent to the following email addresses:</p>
+{foreach from=$sent_to item=email}
   <p>{$email}</p>
-  {/foreach}
-</p>
+{/foreach}
 {/if}
 </div>

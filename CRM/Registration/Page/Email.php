@@ -46,7 +46,7 @@ class CRM_Registration_Page_Email extends CRM_Core_Page {
    *  - contribution is GA payment
    *  - contribution is in status completed
    *
-   * @return contribution data as array, or an error message as a string
+   * @return array | string contribution data as array, or an error message as a string
    */
   public static function verifyContribution($contribution_id) {
     try {

@@ -168,7 +168,7 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
  */
 function registration_civicrm_preProcess($formName, &$form) {
   if ($formName == 'CRM_Contribute_Form_Task_Invoice') {
-    $id = CRM_Utils_Request::retrieve('id', 'Positive', $this, FALSE);
+    $id = CRM_Utils_Request::retrieve('id', 'Positive', $store = NULL, FALSE);
     CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/registration/registration_email', "cid={$id}"));
   }
 }

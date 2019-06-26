@@ -863,17 +863,17 @@ class CRM_Registration_Processor {
       $contact_ids = array($contact_id);
       $contribution_ids = array($contribution['id']);
       $params = array('forPage' => 1, 'output' => 'pdf_invoice');
-      $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids, $null);
+      $invoice_html = CRM_Contribute_Form_Task_Invoice::printPDF($contribution_ids, $params, $contact_ids);
 
       // DISABLED: DOMPDF crashes with large amounts of line items (registrations) (see #5305)
       // $invoice_pdf  = CRM_Contribute_Form_Task_Invoice::putFile($invoice_html, $file_name . '.pdf');
       $template        = self::getInvoiceTemplate();
       $pdf_filename    = "{$contribution['trxn_id']}.pdf";
-      $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($invoice_html, $pf_invoice_pdf, TRUE, $template->pdf_format_id);
+      $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($invoice_html, $pdf_filename, TRUE, $template->pdf_format_id);
       file_put_contents($pdf_filename, $pf_invoice_pdf);
       return $pdf_filename;
 
-      return $invoice_pdf;
+//      return $invoice_pdf;
 
     } else {
       // GENERATE PRO FORMA INVOICE
@@ -953,7 +953,7 @@ class CRM_Registration_Processor {
         // FINALLY: generate invoice
         $pf_invoice_html = $smarty->fetch("string:" . $template->msg_html);
         $pdf_filename    = "{$contribution['trxn_id']}.pdf";
-        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, $pf_invoice_pdf, TRUE, $template->pdf_format_id);
+        $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($pf_invoice_html, $pdf_filename, TRUE, $template->pdf_format_id);
         // $pdf_filename    = tempnam(sys_get_temp_dir(), 'PF_INV_');
         file_put_contents($pdf_filename, $pf_invoice_pdf);
         return $pdf_filename;
