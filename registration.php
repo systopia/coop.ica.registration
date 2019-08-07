@@ -25,6 +25,7 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
     return;
   }
 
+  CRM_Core_Error::debug_log_message("Current invoice_id for [{$contributionBAO->id}]: '{$contributionBAO->invoice_id}'");
   if ($contributionBAO->invoice_id) {
     // the invoice ID is already set
     $invoice_id = $contributionBAO->invoice_id;
@@ -44,6 +45,7 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
 
     // update invoice_id on contribution, since it isn't stored stored automatically
     //  FIXME: report bug?
+    CRM_Core_Error::debug_log_message("Writing invoice_id '{$contributionBAO->invoice_id}' to [{$contributionBAO->id}]");
     civicrm_api3('Contribution', 'create', array(
       'id'         => $contributionBAO->id,
       'invoice_id' => $invoice_id,

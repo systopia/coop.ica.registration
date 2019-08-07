@@ -24,6 +24,7 @@
  * @access public
  */
 function civicrm_api3_registration_create($params) {
+  CRM_Core_Error::debug_log_message("RECEIVED Registration.create: " . json_encode($params));
   $processor = new CRM_Registration_Processor($params);
 
   // verify input data

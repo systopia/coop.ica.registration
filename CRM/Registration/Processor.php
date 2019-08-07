@@ -860,6 +860,7 @@ class CRM_Registration_Processor {
   protected function generateInvoicePDF($contribution, $contact_id, $file_name) {
     if ($this->isFinalInvoice($contribution)) {
       // GENERATE INVOICE
+      CRM_Core_Error::debug_log_message("generateFinalInvoicePDF: " . json_encode(debug_backtrace()));
       $contact_ids = array($contact_id);
       $contribution_ids = array($contribution['id']);
       $params = array('forPage' => 1, 'output' => 'pdf_invoice');
@@ -871,6 +872,7 @@ class CRM_Registration_Processor {
       $pdf_filename    = "{$contribution['trxn_id']}.pdf";
       $pf_invoice_pdf  = CRM_Utils_PDF_Utils::html2pdf($invoice_html, $pdf_filename, TRUE, $template->pdf_format_id);
       file_put_contents($pdf_filename, $pf_invoice_pdf);
+      CRM_Core_Error::debug_log_message("generateFinalInvoicePDF: done");
       return $pdf_filename;
 
 //      return $invoice_pdf;
