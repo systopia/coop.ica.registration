@@ -20,6 +20,8 @@ define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2019-');
  * Implements hook_civicrm_invoiceNumber().
  */
 function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
+  CRM_Core_Error::debug_log_message("Hook civicrm_invoiceNumber called.");
+
   // only interfere with event fee contributions
   if ($contributionBAO->financial_type_id != 4) {
     return;
@@ -33,10 +35,12 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
   } else {
     $prefix = EVENT_FEE_INVOICE_PREFIX;
     $counter_position = strlen($prefix) + 1;
+    CRM_Core_Error::debug_log_message("SELECT MAX(CAST(SUBSTRING(`invoice_id` FROM {$counter_position}) AS UNSIGNED)) FROM `civicrm_contribution` WHERE `invoice_id` REGEXP '{$prefix}[0-9]+$';");
     $last_id = CRM_Core_DAO::singleValueQuery("
       SELECT MAX(CAST(SUBSTRING(`invoice_id` FROM {$counter_position}) AS UNSIGNED))
       FROM `civicrm_contribution`
       WHERE `invoice_id` REGEXP '{$prefix}[0-9]+$';");
+    CRM_Core_Error::debug_log_message("RESULT: $last_id");
     if ($last_id) {
       $invoice_id = $prefix . ($last_id + 1);
     } else {
@@ -57,6 +61,7 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
  * Implements hook_civicrm_invoiceParams().
  */
 function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
+  CRM_Core_Error::debug_log_message("Hook civicrm_invoiceParams called.");
   // DETERMINE the invoice_date: (see ICA-5075)
   //  1) load custom field for $contributionBAO->id
   $custom_field = CRM_Registration_CustomData::getCustomField('contribution_extra', 'invoice_date');
