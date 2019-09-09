@@ -43,10 +43,11 @@ function registration_civicrm_invoiceNumber(&$invoice_id, $contributionBAO) {
     }
 
     // update invoice_id on contribution, since it isn't stored stored automatically
-    //  FIXME: report bug?
+    // store to invoice_id and invoice_number
     civicrm_api3('Contribution', 'create', array(
-      'id'         => $contributionBAO->id,
-      'invoice_id' => $invoice_id,
+        'id'             => $contributionBAO->id,
+        'invoice_id'     => $invoice_id,
+        'invoice_number' => $invoice_id,
       ));
   }
 }
