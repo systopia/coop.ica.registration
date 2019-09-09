@@ -97,51 +97,8 @@ function registration_civicrm_invoiceParams(&$tplParams, $contributionBAO) {
   $tplParams['lineItem'] = $line_items;
   $tplParams['subTotal'] = $subTotal;
 
-
   // FIND and add billing address
-  $billing_address = NULL;
-
-  // first try with type Billing
-  $addresses = civicrm_api3('Address', 'get', array(
-    'contact_id'       => $contributionBAO->contact_id,
-    'location_type_id' => 'Billing',
-    ));
-  foreach ($addresses['values'] as $address) {
-    $billing_address = $address;
-    if ($address['is_billing'] || $address['is_primary']) {
-      break;
-    }
-  }
-
-  // then try is_billing
-  if (!$billing_address) {
-    $addresses = civicrm_api3('Address', 'get', array(
-      'contact_id' => $contributionBAO->contact_id,
-      'is_billing' => 1,
-      ));
-    foreach ($addresses['values'] as $address) {
-      $billing_address = $address;
-      if ($address['is_primary']) {
-        break;
-      }
-    }
-  }
-
-  // if still empty, try others
-  if (!$billing_address) {
-    $addresses = civicrm_api3('Address', 'get', array(
-      'contact_id' => $contributionBAO->contact_id,
-      'is_billing' => 0,
-      ));
-    foreach ($addresses['values'] as $address) {
-      $billing_address = $address;
-      if ($address['is_primary']) {
-        break;
-      }
-    }
-  }
-
-  // set the parameters
+  $billing_address = CRM_Registration_Processor::getBillingAddress($contributionBAO->contact_id);
   if ($billing_address) {
     // look up some stuff
     if (!empty($billing_address['state_province_id'])) {

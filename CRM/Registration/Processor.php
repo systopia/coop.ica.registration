@@ -855,6 +855,63 @@ class CRM_Registration_Processor {
   }
 
   /**
+   * Get the billing address from the given contact, in the following order:
+   *  1) location type 'Billing'
+   *  2) billing flag
+   *  3) primary
+   *
+   * @param $contact_id integer contact ID
+   * @return array|null billing address
+   */
+  public static function getBillingAddress($contact_id) {
+    $billing_address = NULL;
+    if (empty($contact_id)) {
+      return NULL;
+    }
+
+    // first try with type Billing
+    $addresses = civicrm_api3('Address', 'get', array(
+        'contact_id'       => $contact_id,
+        'location_type_id' => 'Billing',
+    ));
+    foreach ($addresses['values'] as $address) {
+      $billing_address = $address;
+      if ($address['is_billing'] || $address['is_primary']) {
+        break;
+      }
+    }
+
+    // then try is_billing
+    if (!$billing_address) {
+      $addresses = civicrm_api3('Address', 'get', array(
+          'contact_id' => $contact_id,
+          'is_billing' => 1,
+      ));
+      foreach ($addresses['values'] as $address) {
+        $billing_address = $address;
+        if ($address['is_primary']) {
+          break;
+        }
+      }
+    }
+
+    // if still empty, try others
+    if (!$billing_address) {
+      $addresses = civicrm_api3('Address', 'get', array(
+          'contact_id' => $contact_id,
+          'is_billing' => 0,
+      ));
+      foreach ($addresses['values'] as $address) {
+        $billing_address = $address;
+        if ($address['is_primary']) {
+          break;
+        }
+      }
+    }
+    return $billing_address;
+  }
+
+  /**
    * helper function to generate an invoice PDF
    */
   protected function generateInvoicePDF($contribution, $contact_id, $file_name) {
@@ -890,16 +947,15 @@ class CRM_Registration_Processor {
         $smarty->assign('organization_name', $contact['organization_name']);
 
         // add registrant billing address
-        $address_query = civicrm_api3('Address', 'get', array('contact_id' => $contribution['contact_id'], 'location_type_id' => 'Billing'));
-        foreach ($address_query['values'] as $address) {
-          foreach ($address as $key => $value) {
+        $billing_address = self::getBillingAddress($contribution['contact_id']);
+        if ($billing_address) {
+          foreach ($billing_address as $key => $value) {
             if ($key == 'country_id') {
               $smarty->assign('country', CRM_Core_PseudoConstant::country($value));
             } else {
               $smarty->assign($key, $value);
             }
           }
-          break;
         }
 
         // add ICA address data
