@@ -97,7 +97,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
             'icon'      => 'fa-search',
         ],
         [
-            'type'      => 'print_all',
+            'type'      => 'printall',
             'name'      => E::ts('Print All'),
             'isDefault' => TRUE,
             'icon'      => 'fa-print',
@@ -113,13 +113,13 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
   }
 
   /**
-   * Redirect all (custom) actions ('find', 'print_all', and 'reset')
+   * Redirect all (custom) actions ('find', 'all_print', and 'reset')
    * to submit
    */
   public function handle($command) {
     switch ($command) {
       case 'find':
-      case 'print_all':
+      case 'printall':
       case 'clear':
       case 'submit':
         $this->command = $command;
@@ -139,13 +139,16 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/participant/checkin', 'reset=1'));
         break;
 
-      case 'print_all':
-
-        // TODO: print
+      case 'printall':
+        $participant_ids = [];
+        foreach ($this->participants as $participant) {
+          $participant_ids[] = $participant['participant_id'];
+        }
+        CRM_Registration_Page_PrintBadge::printBadges($participant_ids);
 
       default:
       case 'find':
-        // nothing to do here, really.
+        // nothing to do here, really. find will run automatically
     }
 
     parent::postProcess();
@@ -269,12 +272,14 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
 
     while ($query->fetch()) {
       $participants[] = [
-          'sort_name'    => $query->contact_sort_name,
-          'status'       => $query->participant_status,
-          'badge_type'   => $query->badge_type,
-          'badge_color'  => $query->badge_color,
-          'badge_status' => $query->badge_status,
-          'links'        => $this->generateActionLinks($query)
+          'participant_id' => $query->participant_id,
+          'contact_id'     => $query->contact_id,
+          'sort_name'      => $query->contact_sort_name,
+          'status'         => $query->participant_status,
+          'badge_type'     => $query->badge_type,
+          'badge_color'    => $query->badge_color,
+          'badge_status'   => $query->badge_status,
+          'links'          => $this->generateActionLinks($query)
       ];
     }
     return $participants;

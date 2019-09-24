@@ -131,6 +131,22 @@ class CRM_Registration_Configuration {
   }
 
   /**
+   * Get the XPortX export configuration name
+   *
+   * @return string|null
+   */
+  public static function getBadgeExporterConfig() {
+    if (class_exists('CRM_Xportx_Export')) {
+      $configurations = CRM_Xportx_Export::getExportConfigurations('Participant');
+      if (count($configurations) > 0) {
+        // TODO: random one?
+        return reset($configurations);
+      }
+    }
+    return NULL;
+  }
+
+  /**
    * Parse civi API value array and filter out specific contribution stati
    * returns an array with contribution_status (optionValue) => label
    */
