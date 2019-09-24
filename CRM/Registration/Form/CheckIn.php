@@ -115,9 +115,15 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         ],
         [
             'type'      => 'printall',
-            'name'      => E::ts('Print All'),
+            'name'      => E::ts('Preview All'),
             'isDefault' => TRUE,
             'icon'      => 'fa-print',
+        ],
+        [
+            'type'      => 'registerall',
+            'name'      => E::ts('Register All'),
+            'isDefault' => TRUE,
+            'icon'      => 'fa-check',
         ],
         [
             'type'      => 'clear',
@@ -137,6 +143,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     switch ($command) {
       case 'find':
       case 'printall':
+      case 'registerall':
       case 'clear':
       case 'submit':
         $this->command = $command;
@@ -163,11 +170,19 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         break;
 
       case 'printall':
-        $participant_ids = [];
-        foreach ($this->participants as $participant) {
-          $participant_ids[] = $participant['participant_id'];
+      case 'registerall':
+        if (empty($this->participants)) {
+          CRM_Core_Session::setStatus(E::ts("No Partipants found."), E::ts("Nothing to do"), 'info');
+        } else {
+          $participant_ids = [];
+          foreach ($this->participants as $participant) {
+            $participant_ids[] = $participant['participant_id'];
+          }
+          if ($this->command == 'registerall') {
+            CRM_Registration_Page_PrintBadge::printBadges($participant_ids, TRUE);
+            // not reached: CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/participant/checkin', 'reset=0'));
+          }
         }
-        CRM_Registration_Page_PrintBadge::printBadges($participant_ids);
 
       default:
       case 'find':
@@ -359,16 +374,20 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
   protected function generateActionLinks($participant) {
     $links = [];
 
-    // add print link
-    $printable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
-    if (in_array($participant->badge_status_id, $printable_states)) {
-      $url = CRM_Utils_System::url('civicrm/participant/printbadge', "ids={$participant->participant_id}");
-      $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Print Badge\">Print</a>";
-    }
-
     // add edit link
     $url = CRM_Utils_System::url('civicrm/contact/view/participant', "reset=1&action=update&id={$participant->participant_id}&cid={$participant->contact_id}");
     $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button crm-popup\" title=\"Edit Participant\">Edit</a>";
+
+    // add preview link
+    $url = CRM_Utils_System::url('civicrm/participant/printbadge', "ids={$participant->participant_id}");
+    $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Preview Badge\">Preview</a>";
+
+    // add print link
+    $printable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
+    if (in_array($participant->badge_status_id, $printable_states)) {
+      $url = CRM_Utils_System::url('civicrm/participant/printbadge', "register=1&ids={$participant->participant_id}");
+      $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Print Badge\">Register</a>";
+    }
 
     return $links;
   }

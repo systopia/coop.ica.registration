@@ -18,12 +18,24 @@ class CRM_Registration_Page_PrintBadge extends CRM_Core_Page {
 
   /**
    * Use XPortX to generate the badge PDFs
-   * @param $participant_ids
+   * @param $participant_ids array   comma-separated list of IDs
+   * @param $register        boolean should the participant be registered (status changed to "Attended")
    */
-  public static function printBadges($participant_ids) {
+  public static function printBadges($participant_ids, $register) {
     if (empty($participant_ids)) {
       throw new Exception(E::ts("No participant IDs passed."));
     }
+
+    // register participants
+    if (!empty($register)) {
+      foreach ($participant_ids as $participant_id) {
+        civicrm_api3('Participant', 'create', [
+            'id'                    => $participant_id,
+            'participant_status_id' => 'Attended'
+        ]);
+      }
+    }
+
     $badge_export_config = CRM_Registration_Configuration::getBadgeExporterConfig();
     if ($badge_export_config) {
       $export = new CRM_Xportx_Export($badge_export_config);
@@ -35,6 +47,7 @@ class CRM_Registration_Page_PrintBadge extends CRM_Core_Page {
 
   public function run() {
     $filtered_participant_ids = [];
+    $register_participants = CRM_Utils_Request::retrieve('register', 'String', $this, NULL, FALSE);
     $raw_participant_ids = CRM_Utils_Request::retrieve('ids', 'String');
     $raw_participant_id_list = explode(',', $raw_participant_ids);
     foreach ($raw_participant_id_list as $raw_participant_id) {
@@ -44,6 +57,6 @@ class CRM_Registration_Page_PrintBadge extends CRM_Core_Page {
       }
     }
 
-    self::printBadges($filtered_participant_ids);
+    self::printBadges($filtered_participant_ids, $register_participants);
   }
 }

@@ -17,9 +17,10 @@
     font-family: Helvetica, Arial, Geneva, sans-serif;
     padding-left: 20mm;
   }
-
-  .container{
+  .linebreak{
     page-break-before: always;
+  }
+  .container{
     position: relative;
     height: 165mm;
     width: 100mm;
@@ -31,7 +32,7 @@
   .name{
     position: relative;
     height:45mm;
-    font-size: 1.4em;
+    font-size: 16pt; /*1.4em;*/
     font-weight: bold;
     display: table-cell;
     vertical-align: bottom;
@@ -40,17 +41,18 @@
   .organisation{
     position:absolute;
     top: 55mm;
-    font-size: 1.1em;
+    font-size: 14pt; /*1.1em;*/
   }
   .country_pos{
     position: absolute;
     top: 57mm;  /* 75mm - 20mm */
     /* background-color: green; */
   }
-  .coutry{
+  .country{
     position:relative;
     height: 20mm;
-    font-size: 1.1em;
+    font-size: 14pt; /*1.1em;*/
+    font-weight: bold;
     display: table-cell;
     vertical-align: bottom;
   }
@@ -58,14 +60,19 @@
 
 </style>
 {/literal}
-{foreach from=$records item=record}
+{foreach from=$records item=record name=records}
+{crmAPI var=country entity=Country action=getsingle version=3 id=$record.country return=name}
 <div class="container" >
   <div class="name_pos">
-    <div class="name"><span>{$record.Anzeigename}</span></div>
+    <div class="name"><span>{$record.badge}</span></div>
   </div>
-  <div class="organisation">{$record.Anzeigeorganisationsname}</div>
+  <div class="organisation">{$record.organisation_badge}</div>
   <div class="country_pos">
-    <div class="coutry">SRI LANKA</div>
+    <div class="country">{$country.name|upper}</div>
   </div>
 </div>
+{if ! $smarty.foreach.records.last}
+  <div class="linebreak"></div>
+{/if}
+
 {/foreach}

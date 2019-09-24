@@ -96,3 +96,14 @@
   {include file="CRM/common/formButtons.tpl" location="bottom"}
 </div>
 {/if}
+
+<script>
+  {literal}
+  // trigger page reload after edit
+  cj(document).ready(function() {
+    cj(document).on('crmPopupClose', function(event) {
+      document.location.reload();
+    });
+  });
+  {/literal}
+</script>
