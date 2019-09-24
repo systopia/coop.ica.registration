@@ -12,7 +12,7 @@
 +-------------------------------------------------------*}
 
 
-<div class="event-checkin-search">
+<div class="registration-checkin-search">
   <div class="crm-section">
     <div class="label">{$form.event_id.label}</div>
     <div class="content">{$form.event_id.html}</div>
@@ -54,5 +54,38 @@
 {include file="CRM/common/formButtons.tpl" location="bottom"}
 </div>
 
-<div class="event-checkin-results">
+<br/>
+{if $participants}
+<div class="registration-checkin-results">
+  <table class="row-highlight">
+    <thead>
+    <tr>
+      <th>{ts domain="coop.ica.registration"}Participant{/ts}</th>
+      <th>{ts domain="coop.ica.registration"}Status{/ts}</th>
+      <th>{ts domain="coop.ica.registration"}Badge Type{/ts}</th>
+      <th>{ts domain="coop.ica.registration"}Badge Color{/ts}</th>
+      <th><!-- actions --></th>
+    </tr>
+    </thead>
+    <tbody>
+      {foreach from=$participants item=participant}
+      <tr class="{cycle values="odd,even"}">
+        <td>{$participant.sort_name}</td>
+        <td>{$participant.status}</td>
+        <td>{$participant.badge_type}</td>
+        <td>{$participant.badge_color}</td>
+        <td>
+          <span>
+            {foreach from=$participant.links item=link}{$link}{/foreach}
+          </span>
+        </td>
+      </tr>
+      {/foreach}
+    </tbody>
+  </table>
 </div>
+
+<div class="crm-submit-buttons">
+  {include file="CRM/common/formButtons.tpl" location="bottom"}
+</div>
+{/if}

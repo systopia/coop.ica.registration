@@ -123,6 +123,14 @@ class CRM_Registration_Configuration {
   }
 
   /**
+   * Get a list of badge states that are considered to be ready-to-print
+   * @return array
+   */
+  public static function getPrintableBadgeStates() {
+    return ['1'];
+  }
+
+  /**
    * Parse civi API value array and filter out specific contribution stati
    * returns an array with contribution_status (optionValue) => label
    */

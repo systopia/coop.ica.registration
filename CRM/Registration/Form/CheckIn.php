@@ -24,6 +24,9 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
   /** @var string used for action mapping */
   protected $command = NULL;
 
+  /** @var array stores the search result */
+  protected $participants = NULL;
+
   public function buildQuickForm() {
     CRM_Utils_System::setTitle(E::ts("Event Check-In Desk"));
 
@@ -137,6 +140,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         break;
 
       case 'print_all':
+
         // TODO: print
 
       default:
@@ -188,9 +192,11 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     $registration_data = CRM_Registration_CustomData::getGroupSpecs('GA_Registration');
     $REGISTRATION_JOIN = CRM_Registration_CustomData::createSQLJoin('GA_Registration', 'registration', 'participant.id');
     $LOCATION_JOIN     = CRM_Registration_CustomData::createSQLJoin('Location_and_Language', 'location_and_language', 'participant.contact_id');
-    $SELECT_BADGE_TYPE = CRM_Registration_CustomData::createSQLSelect('GA_Registration', 'badge_type', 'registration', 'badge_type');
     $REGISTRATION_ORG  = CRM_Registration_CustomData::getCustomField('GA_Registration', 'registered_organisation');
     $MAIN_CONTACT      = CRM_Registration_CustomData::getCustomField('GA_Registration', 'main_contact');
+    $BADGE_TYPE        = CRM_Registration_CustomData::getCustomField('GA_Registration', 'badge_type');
+    $BADGE_COLOR       = CRM_Registration_CustomData::getCustomField('GA_Registration', 'badge_color');
+    $SLCT_BADGE_STATUS = CRM_Registration_CustomData::createSQLSelect('GA_Registration', 'badge_status', 'registration', 'badge_status');
 
     // build query
     $query_parameters = [];
@@ -238,9 +244,14 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     $WHERE_CLAUSE = '(' . implode(') AND (', $where_clauses) . ')';
     $sql_query = "
       SELECT
+          participant.id       AS participant_id,
+          contact.id           AS contact_id,
+          contact.contact_type AS contact_type,
           contact.sort_name    AS contact_sort_name,
           status.label         AS participant_status,
-          {$SELECT_BADGE_TYPE}
+          badge_type.label     AS badge_type,
+          badge_color.label    AS badge_color,
+          {$SLCT_BADGE_STATUS}
       FROM civicrm_participant participant
       {$REGISTRATION_JOIN}
       {$LOCATION_JOIN} 
@@ -248,18 +259,47 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
       LEFT JOIN civicrm_contact organisation           ON organisation.id = registration.`{$REGISTRATION_ORG['column_name']}` 
       LEFT JOIN civicrm_contact main_contact           ON organisation.id = registration.`{$MAIN_CONTACT['column_name']}` 
       LEFT JOIN civicrm_participant_status_type status ON status.id = participant.status_id
+      LEFT JOIN civicrm_option_value badge_type        ON badge_type.value = registration.{$BADGE_TYPE['column_name']} AND badge_type.option_group_id = {$BADGE_TYPE['option_group_id']}
+      LEFT JOIN civicrm_option_value badge_color       ON badge_color.value = registration.{$BADGE_COLOR['column_name']} AND badge_color.option_group_id = {$BADGE_COLOR['option_group_id']}
       WHERE {$WHERE_CLAUSE}
+      GROUP BY participant.id
       ORDER BY contact.sort_name DESC";
-    Civi::log()->debug($sql_query);
+    //Civi::log()->debug($sql_query);
     $query = CRM_Core_DAO::executeQuery($sql_query, $query_parameters);
 
     while ($query->fetch()) {
       $participants[] = [
-          'sort_name'  => $query->contact_sort_name,
-          'status'     => $query->participant_status,
-          'badge_type' => $query->badge_type,
+          'sort_name'    => $query->contact_sort_name,
+          'status'       => $query->participant_status,
+          'badge_type'   => $query->badge_type,
+          'badge_color'  => $query->badge_color,
+          'badge_status' => $query->badge_status,
+          'links'        => $this->generateActionLinks($query)
       ];
     }
     return $participants;
+  }
+
+  /**
+   * Generate the actions links for the participant data
+   *
+   * @param $data CRM_Core_DAO search result
+   * @return array links to display in the table
+   */
+  protected function generateActionLinks($participant) {
+    $links = [];
+
+    // add print link
+    $printable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
+    if (in_array($participant->badge_status, $printable_states)) {
+      $url = CRM_Utils_System::url('civicrm/participant/printbadge', "ids={$participant->participant_id}");
+      $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Print Badge\">Print</a>";
+    }
+
+    // add edit link
+    $url = CRM_Utils_System::url('civicrm/contact/view/participant', "reset=1&action=update&id={$participant->participant_id}&cid={$participant->contact_id}");
+    $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button crm-popup\" title=\"Edit Participant\">Edit</a>";
+
+    return $links;
   }
 }
