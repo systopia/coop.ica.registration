@@ -178,10 +178,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
           foreach ($this->participants as $participant) {
             $participant_ids[] = $participant['participant_id'];
           }
-          if ($this->command == 'registerall') {
-            CRM_Registration_Page_PrintBadge::printBadges($participant_ids, TRUE);
-            // not reached: CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/participant/checkin', 'reset=0'));
-          }
+          CRM_Registration_Page_PrintBadge::printBadges($participant_ids, ($this->command == 'registerall'));
         }
 
       default:
