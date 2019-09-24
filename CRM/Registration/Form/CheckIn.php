@@ -21,6 +21,9 @@ use CRM_Registration_ExtensionUtil as E;
  * @see https://wiki.civicrm.org/confluence/display/CRMDOC/QuickForm+Reference
  */
 class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
+  /** @var string used for action mapping */
+  protected $command = NULL;
+
   public function buildQuickForm() {
     CRM_Utils_System::setTitle(E::ts("Event Check-In Desk"));
 
@@ -44,7 +47,8 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         'country_id',
         E::ts('Country'),
         $this->getCountries(),
-        FALSE
+        FALSE,
+        ['class' => 'crm-select2']
     );
     $this->add(
         'text',
@@ -81,20 +85,64 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     $this->participants = $this->findParticipants();
     $this->assign('participants', $this->participants);
 
-    $this->addButtons(array(
-      array(
-          'type'      => 'submit',
-          'name'      => E::ts('Find'),
-          'isDefault' => TRUE,
-      ),
-    ));
+    // add buttons
+    $this->addButtons([
+        [
+            'type'      => 'find',
+            'name'      => E::ts('Find'),
+            'isDefault' => TRUE,
+            'icon'      => 'fa-search',
+        ],
+        [
+            'type'      => 'print_all',
+            'name'      => E::ts('Print All'),
+            'isDefault' => TRUE,
+            'icon'      => 'fa-print',
+        ],
+        [
+            'type'      => 'clear',
+            'name'      => E::ts('Reset'),
+            'isDefault' => TRUE,
+            'icon'      => 'fa-trash-o',
+        ],
+    ]);
     parent::buildQuickForm();
+  }
+
+  /**
+   * Redirect all (custom) actions ('find', 'print_all', and 'reset')
+   * to submit
+   */
+  public function handle($command) {
+    switch ($command) {
+      case 'find':
+      case 'print_all':
+      case 'clear':
+      case 'submit':
+        $this->command = $command;
+        $command = 'submit';
+        break;
+      default:
+        break;
+    }
+    parent::handle($command);
   }
 
   public function postProcess() {
     $values = $this->exportValues();
 
-    // TODO: export all
+    switch ($this->command) {
+      case 'clear':
+        CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/participant/checkin', 'reset=1'));
+        break;
+
+      case 'print_all':
+        // TODO: print
+
+      default:
+      case 'find':
+        // nothing to do here, really.
+    }
 
     parent::postProcess();
   }
@@ -105,7 +153,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
    * @return array ID => name
    */
   public function getCountries() {
-    return [];
+    return ['' => E::ts("- any -")] + CRM_Core_PseudoConstant::country();
   }
 
   /**
@@ -136,9 +184,13 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     $participants  = [];
 
     // get fields an tables
+    CRM_Registration_CustomData::cacheCustomGroups(['Location_and_Language', 'GA_Registration']);
     $registration_data = CRM_Registration_CustomData::getGroupSpecs('GA_Registration');
     $REGISTRATION_JOIN = CRM_Registration_CustomData::createSQLJoin('GA_Registration', 'registration', 'participant.id');
+    $LOCATION_JOIN     = CRM_Registration_CustomData::createSQLJoin('Location_and_Language', 'location_and_language', 'participant.contact_id');
     $SELECT_BADGE_TYPE = CRM_Registration_CustomData::createSQLSelect('GA_Registration', 'badge_type', 'registration', 'badge_type');
+    $REGISTRATION_ORG  = CRM_Registration_CustomData::getCustomField('GA_Registration', 'registered_organisation');
+    $MAIN_CONTACT      = CRM_Registration_CustomData::getCustomField('GA_Registration', 'main_contact');
 
     // build query
     $query_parameters = [];
@@ -155,6 +207,27 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
       $where_clauses[] = "`registration`.`{$registration_id_field['column_name']}` LIKE CONCAT('%', %{$i}, '%')";
       $query_parameters[$i] = [$criteria['registration_id'], 'String'];
     }
+    if (!empty($criteria['participant_name'])) {
+      $i = count($query_parameters);
+      $where_clauses[] = "`contact`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+      $query_parameters[$i] = [$criteria['participant_name'], 'String'];
+    }
+    if (!empty($criteria['organisation_name'])) {
+      $i = count($query_parameters);
+      $where_clauses[] = "`organisation`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+      $query_parameters[$i] = [$criteria['organisation_name'], 'String'];
+    }
+    if (!empty($criteria['registered_with'])) {
+      $i = count($query_parameters);
+      $where_clauses[] = "`main_contact`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+      $query_parameters[$i] = [$criteria['registered_with'], 'String'];
+    }
+    if (!empty($criteria['country_id'])) {
+      $i = count($query_parameters);
+      $country_field = CRM_Registration_CustomData::getCustomField('Location_and_Language', 'Country');
+      $where_clauses[] = "`location_and_language`.`{$country_field['column_name']}` = %{$i}";
+      $query_parameters[$i] = [$criteria['country_id'], 'Integer'];
+    }
 
     // avoid empty query
     if (count($where_clauses) < 2) {
@@ -163,33 +236,27 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
 
     // run query
     $WHERE_CLAUSE = '(' . implode(') AND (', $where_clauses) . ')';
-    Civi::log()->debug("
+    $sql_query = "
       SELECT
           contact.sort_name    AS contact_sort_name,
           status.label         AS participant_status,
-          $SELECT_BADGE_TYPE
+          {$SELECT_BADGE_TYPE}
       FROM civicrm_participant participant
-      LEFT JOIN civicrm_contact contact                ON participant.contact_id = contact.id 
+      {$REGISTRATION_JOIN}
+      {$LOCATION_JOIN} 
+      LEFT JOIN civicrm_contact contact                ON contact.id = participant.contact_id 
+      LEFT JOIN civicrm_contact organisation           ON organisation.id = registration.`{$REGISTRATION_ORG['column_name']}` 
+      LEFT JOIN civicrm_contact main_contact           ON organisation.id = registration.`{$MAIN_CONTACT['column_name']}` 
       LEFT JOIN civicrm_participant_status_type status ON status.id = participant.status_id
-      {$REGISTRATION_JOIN} 
       WHERE {$WHERE_CLAUSE}
-      ORDER BY contact.sort_name DESC");
-    $query = CRM_Core_DAO::executeQuery("
-      SELECT
-          contact.sort_name    AS contact_sort_name,
-          status.label         AS participant_status,
-          $SELECT_BADGE_TYPE
-      FROM civicrm_participant participant
-      LEFT JOIN civicrm_contact contact                ON participant.contact_id = contact.id 
-      LEFT JOIN civicrm_participant_status_type status ON status.id = participant.status_id
-      {$REGISTRATION_JOIN} 
-      WHERE {$WHERE_CLAUSE}
-      ORDER BY contact.sort_name DESC", $query_parameters);
+      ORDER BY contact.sort_name DESC";
+    Civi::log()->debug($sql_query);
+    $query = CRM_Core_DAO::executeQuery($sql_query, $query_parameters);
 
     while ($query->fetch()) {
       $participants[] = [
           'sort_name'  => $query->contact_sort_name,
-          'status'     => $query->status,
+          'status'     => $query->participant_status,
           'badge_type' => $query->badge_type,
       ];
     }
