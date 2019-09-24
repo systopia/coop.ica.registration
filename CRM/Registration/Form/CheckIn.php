@@ -21,6 +21,8 @@ use CRM_Registration_ExtensionUtil as E;
  * @see https://wiki.civicrm.org/confluence/display/CRMDOC/QuickForm+Reference
  */
 class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
+  const SEARCH_LIMIT = 100;
+
   /** @var string used for action mapping */
   protected $command = NULL;
 
@@ -81,12 +83,27 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         ['size' => 32],
         FALSE
     );
+    $this->add(
+        'select',
+        'badge_status',
+        E::ts('Badge Status'),
+        $this->getBadgeStatusList(),
+        FALSE,
+        ['class' => 'crm-select2']
+    );
 
-    // TODO: set defaults event_id
+    // set defaults: event_id
+    $defaults = Civi::settings()->get('ica_registration_checkin_defaults');
+    if (is_array($defaults)) {
+      $this->setDefaults($defaults);
+    }
 
     // find/assign participants
     $this->participants = $this->findParticipants();
     $this->assign('participants', $this->participants);
+    if (count($this->participants) >= self::SEARCH_LIMIT) {
+      CRM_Core_Session::setStatus(E::ts("Search limit of %1 exceeded, not all participants matching the criteria listed!", [1 => self::SEARCH_LIMIT]), E::ts("Warning: Search Limit"), 'warn');
+    }
 
     // add buttons
     $this->addButtons([
@@ -134,6 +151,12 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
   public function postProcess() {
     $values = $this->exportValues();
 
+    // first: store defaults
+    $defaults = [
+        'event_id' => CRM_Utils_Array::value('event_id', $values, '')
+    ];
+    Civi::settings()->set('ica_registration_checkin_defaults', $defaults);
+
     switch ($this->command) {
       case 'clear':
         CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/participant/checkin', 'reset=1'));
@@ -162,6 +185,25 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
   public function getCountries() {
     return ['' => E::ts("- any -")] + CRM_Core_PseudoConstant::country();
   }
+
+  /**
+   * Get all badge statuses
+   */
+  public function getBadgeStatusList() {
+    $status_list = ['' => E::ts("- any -")];
+    $status_search = civicrm_api3('OptionValue', 'get', [
+        'option.limit'    => 0,
+        'return'          => 'value,label',
+        'option_group_id' => 'badge_status',
+        'is_active'       => 1
+    ]);
+    foreach ($status_search['values'] as $status) {
+      $status_list[$status['value']] = $status['label'];
+      $status_list[$status['value']] = $status['label'];
+    }
+    return $status_list;
+  }
+
 
   /**
    * Get the list of events in the custom country column
@@ -199,7 +241,8 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     $MAIN_CONTACT      = CRM_Registration_CustomData::getCustomField('GA_Registration', 'main_contact');
     $BADGE_TYPE        = CRM_Registration_CustomData::getCustomField('GA_Registration', 'badge_type');
     $BADGE_COLOR       = CRM_Registration_CustomData::getCustomField('GA_Registration', 'badge_color');
-    $SLCT_BADGE_STATUS = CRM_Registration_CustomData::createSQLSelect('GA_Registration', 'badge_status', 'registration', 'badge_status');
+    $BADGE_STATUS      = CRM_Registration_CustomData::getCustomField('GA_Registration', 'badge_status');
+    $SLCT_BADGE_STATUS = CRM_Registration_CustomData::createSQLSelect('GA_Registration', 'badge_status', 'registration', 'badge_status_id');
 
     // build query
     $query_parameters = [];
@@ -218,14 +261,27 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     }
     if (!empty($criteria['participant_name'])) {
       $i = count($query_parameters);
-      $where_clauses[] = "`contact`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+      $badge_field = CRM_Registration_CustomData::getCustomField('GA_Registration', 'badge');
+      $where_clauses[] = "registration.{$badge_field['column_name']} LIKE CONCAT('%', %{$i}, '%')";
       $query_parameters[$i] = [$criteria['participant_name'], 'String'];
     }
     if (!empty($criteria['organisation_name'])) {
       $i = count($query_parameters);
-      $where_clauses[] = "`organisation`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+      $badge_field = CRM_Registration_CustomData::getCustomField('GA_Registration', 'organisation_badge');
+      $where_clauses[] = "registration.{$badge_field['column_name']} LIKE CONCAT('%', %{$i}, '%')";
       $query_parameters[$i] = [$criteria['organisation_name'], 'String'];
     }
+    // disabled: search in contact/organisation display name
+    //    if (!empty($criteria['participant_name'])) {
+    //      $i = count($query_parameters);
+    //      $where_clauses[] = "`contact`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+    //      $query_parameters[$i] = [$criteria['participant_name'], 'String'];
+    //    }
+    //    if (!empty($criteria['organisation_name'])) {
+    //      $i = count($query_parameters);
+    //      $where_clauses[] = "`organisation`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
+    //      $query_parameters[$i] = [$criteria['organisation_name'], 'String'];
+    //    }
     if (!empty($criteria['registered_with'])) {
       $i = count($query_parameters);
       $where_clauses[] = "`main_contact`.`display_name` LIKE CONCAT('%', %{$i}, '%')";
@@ -236,6 +292,11 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
       $country_field = CRM_Registration_CustomData::getCustomField('Location_and_Language', 'Country');
       $where_clauses[] = "`location_and_language`.`{$country_field['column_name']}` = %{$i}";
       $query_parameters[$i] = [$criteria['country_id'], 'Integer'];
+    }
+    if (!empty($criteria['badge_status'])) {
+      $i = count($query_parameters);
+      $where_clauses[] = "`registration`.`{$BADGE_STATUS['column_name']}` = %{$i}";
+      $query_parameters[$i] = [$criteria['badge_status'], 'String'];
     }
 
     // avoid empty query
@@ -254,6 +315,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
           status.label         AS participant_status,
           badge_type.label     AS badge_type,
           badge_color.label    AS badge_color,
+          badge_status.label   AS badge_status,
           {$SLCT_BADGE_STATUS}
       FROM civicrm_participant participant
       {$REGISTRATION_JOIN}
@@ -264,22 +326,25 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
       LEFT JOIN civicrm_participant_status_type status ON status.id = participant.status_id
       LEFT JOIN civicrm_option_value badge_type        ON badge_type.value = registration.{$BADGE_TYPE['column_name']} AND badge_type.option_group_id = {$BADGE_TYPE['option_group_id']}
       LEFT JOIN civicrm_option_value badge_color       ON badge_color.value = registration.{$BADGE_COLOR['column_name']} AND badge_color.option_group_id = {$BADGE_COLOR['option_group_id']}
+      LEFT JOIN civicrm_option_value badge_status      ON badge_status.value = registration.{$BADGE_STATUS['column_name']} AND badge_status.option_group_id = {$BADGE_STATUS['option_group_id']}
       WHERE {$WHERE_CLAUSE}
       GROUP BY participant.id
-      ORDER BY contact.sort_name DESC";
+      ORDER BY contact.sort_name DESC
+      LIMIT " . self::SEARCH_LIMIT;
     //Civi::log()->debug($sql_query);
     $query = CRM_Core_DAO::executeQuery($sql_query, $query_parameters);
 
     while ($query->fetch()) {
       $participants[] = [
-          'participant_id' => $query->participant_id,
-          'contact_id'     => $query->contact_id,
-          'sort_name'      => $query->contact_sort_name,
-          'status'         => $query->participant_status,
-          'badge_type'     => $query->badge_type,
-          'badge_color'    => $query->badge_color,
-          'badge_status'   => $query->badge_status,
-          'links'          => $this->generateActionLinks($query)
+          'participant_id'  => $query->participant_id,
+          'contact_id'      => $query->contact_id,
+          'sort_name'       => $query->contact_sort_name,
+          'status'          => $query->participant_status,
+          'badge_type'      => $query->badge_type,
+          'badge_color'     => $query->badge_color,
+          'badge_status'    => $query->badge_status,
+          'badge_status_id' => $query->badge_status_id,
+          'links'           => $this->generateActionLinks($query)
       ];
     }
     return $participants;
@@ -296,7 +361,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
 
     // add print link
     $printable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
-    if (in_array($participant->badge_status, $printable_states)) {
+    if (in_array($participant->badge_status_id, $printable_states)) {
       $url = CRM_Utils_System::url('civicrm/participant/printbadge', "ids={$participant->participant_id}");
       $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Print Badge\">Print</a>";
     }

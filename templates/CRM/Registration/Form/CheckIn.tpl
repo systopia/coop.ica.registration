@@ -48,6 +48,11 @@
     <div class="content">{$form.registered_with.html}</div>
     <div class="clear"></div>
   </div>
+  <div class="crm-section">
+    <div class="label">{$form.badge_status.label}</div>
+    <div class="content">{$form.badge_status.html}</div>
+    <div class="clear"></div>
+  </div>
 </div>
 
 <div class="crm-submit-buttons">
@@ -64,6 +69,7 @@
       <th>{ts domain="coop.ica.registration"}Status{/ts}</th>
       <th>{ts domain="coop.ica.registration"}Badge Type{/ts}</th>
       <th>{ts domain="coop.ica.registration"}Badge Color{/ts}</th>
+      <th>{ts domain="coop.ica.registration"}Status{/ts}</th>
       <th><!-- actions --></th>
     </tr>
     </thead>
@@ -74,6 +80,7 @@
         <td>{$participant.status}</td>
         <td>{$participant.badge_type}</td>
         <td>{$participant.badge_color}</td>
+        <td>{$participant.badge_status}</td>
         <td>
           <span>
             {foreach from=$participant.links item=link}{$link}{/foreach}
