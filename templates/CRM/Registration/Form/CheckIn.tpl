@@ -69,7 +69,7 @@
       <th>{ts domain="coop.ica.registration"}Status{/ts}</th>
       <th>{ts domain="coop.ica.registration"}Badge Type{/ts}</th>
       <th>{ts domain="coop.ica.registration"}Badge Color{/ts}</th>
-      <th>{ts domain="coop.ica.registration"}Status{/ts}</th>
+      <th>{ts domain="coop.ica.registration"}Badge Status{/ts}</th>
       <th><!-- actions --></th>
     </tr>
     </thead>
