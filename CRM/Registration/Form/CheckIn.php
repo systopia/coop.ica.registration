@@ -172,13 +172,20 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
       case 'printall':
       case 'registerall':
         if (empty($this->participants)) {
-          CRM_Core_Session::setStatus(E::ts("No Partipants found."), E::ts("Nothing to do"), 'info');
+          CRM_Core_Session::setStatus(E::ts("No participants found."), E::ts("Nothing to do"), 'info');
         } else {
+          $acceptable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
           $participant_ids = [];
           foreach ($this->participants as $participant) {
-            $participant_ids[] = $participant['participant_id'];
+            if (in_array($participant['badge_status_id'], $acceptable_states)) {
+              $participant_ids[] = $participant['participant_id'];
+            }
           }
-          CRM_Registration_Page_PrintBadge::printBadges($participant_ids, ($this->command == 'registerall'));
+          if (empty($participant_ids)) {
+            CRM_Core_Session::setStatus(E::ts("No eligible participants found."), E::ts("Nothing to do"), 'info');
+          } else {
+            CRM_Registration_Page_PrintBadge::printBadges($participant_ids, ($this->command == 'registerall'));
+          }
         }
 
       default:
