@@ -174,15 +174,14 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
         if (empty($this->participants)) {
           CRM_Core_Session::setStatus(E::ts("No participants found."), E::ts("Nothing to do"), 'info');
         } else {
-          $acceptable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
           $participant_ids = [];
           foreach ($this->participants as $participant) {
-            if (in_array($participant['badge_status_id'], $acceptable_states)) {
+            if (CRM_Registration_Configuration::canBeRegistered($participant['participant_id'], $participant['badge_status_id'], $participant['status_name'])) {
               $participant_ids[] = $participant['participant_id'];
             }
           }
           if (empty($participant_ids)) {
-            CRM_Core_Session::setStatus(E::ts("No eligible participants found."), E::ts("Nothing to do"), 'info');
+            CRM_Core_Session::setStatus(E::ts("No eligible participants found."), E::ts("Nobody to register"), 'info');
           } else {
             CRM_Registration_Page_PrintBadge::printBadges($participant_ids, ($this->command == 'registerall'));
           }
@@ -332,6 +331,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
           contact.contact_type AS contact_type,
           contact.sort_name    AS contact_sort_name,
           status.label         AS participant_status,
+          status.name          AS participant_status_name,
           badge_type.label     AS badge_type,
           badge_color.label    AS badge_color,
           badge_status.label   AS badge_status,
@@ -359,6 +359,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
           'contact_id'      => $query->contact_id,
           'sort_name'       => $query->contact_sort_name,
           'status'          => $query->participant_status,
+          'status_name'     => $query->participant_status_name,
           'badge_type'      => $query->badge_type,
           'badge_color'     => $query->badge_color,
           'badge_status'    => $query->badge_status,
@@ -387,8 +388,7 @@ class CRM_Registration_Form_CheckIn extends CRM_Core_Form {
     $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Preview Badge\">Preview</a>";
 
     // add print link
-    $printable_states = CRM_Registration_Configuration::getPrintableBadgeStates();
-    if (in_array($participant->badge_status_id, $printable_states)) {
+    if (CRM_Registration_Configuration::canBeRegistered($participant->participant_id, $participant->badge_status_id, $participant->participant_status_name)) {
       $url = CRM_Utils_System::url('civicrm/participant/printbadge', "register=1&ids={$participant->participant_id}");
       $links[] = "<a href=\"{$url}\" class=\"action-item crm-hover-button\" title=\"Print Badge\">Register</a>";
     }

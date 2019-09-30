@@ -131,6 +131,20 @@ class CRM_Registration_Configuration {
   }
 
   /**
+   * Check if the given participant can be registered
+   *
+   * @param $participant_id  integer participant ID
+   * @param $badge_status_id integer participant status ID
+   * @param $status_name     integer registration status name
+   * @return boolean
+   */
+  public static function canBeRegistered($participant_id, $badge_status_id, $status_name) {
+    $acceptable_states = self::getPrintableBadgeStates();
+    return in_array($badge_status_id, $acceptable_states)
+        && ($status_name != 'Attended');
+  }
+
+  /**
    * Get the XPortX export configuration name
    *
    * @return string|null
