@@ -123,6 +123,44 @@ class CRM_Registration_Configuration {
   }
 
   /**
+   * Get a list of badge states that are considered to be ready-to-print
+   * @return array
+   */
+  public static function getPrintableBadgeStates() {
+    return ['1'];
+  }
+
+  /**
+   * Check if the given participant can be registered
+   *
+   * @param $participant_id  integer participant ID
+   * @param $badge_status_id integer participant status ID
+   * @param $status_name     integer registration status name
+   * @return boolean
+   */
+  public static function canBeRegistered($participant_id, $badge_status_id, $status_name) {
+    $acceptable_states = self::getPrintableBadgeStates();
+    return in_array($badge_status_id, $acceptable_states)
+        && ($status_name != 'Attended');
+  }
+
+  /**
+   * Get the XPortX export configuration name
+   *
+   * @return string|null
+   */
+  public static function getBadgeExporterConfig() {
+    if (class_exists('CRM_Xportx_Export')) {
+      $configurations = CRM_Xportx_Export::getExportConfigurations('Participant');
+      if (count($configurations) > 0) {
+        // TODO: random one?
+        return reset($configurations);
+      }
+    }
+    return NULL;
+  }
+
+  /**
    * Parse civi API value array and filter out specific contribution stati
    * returns an array with contribution_status (optionValue) => label
    */

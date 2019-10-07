@@ -14,6 +14,8 @@
 
 require_once 'registration.civix.php';
 
+use CRM_Registration_ExtensionUtil as E;
+
 define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2019-');
 
 /**
@@ -319,4 +321,22 @@ _registration_civix_civicrm_angularModules($angularModules);
  */
 function registration_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
   _registration_civix_civicrm_alterSettingsFolders($metaDataFolders);
+}
+
+/**
+ * Implements hook_civicrm_navigationMenu().
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_navigationMenu
+ */
+function registration_civicrm_navigationMenu(&$menu)
+{
+  _registration_civix_insert_navigation_menu($menu, 'Events', [
+      'label'      => E::ts('Check-In Desk'),
+      'name'       => 'registration_checkin',
+      'url'        => 'civicrm/participant/checkin',
+      'permission' => 'edit event participants',
+      'operator'   => 'OR',
+      'separator'  => 0,
+  ]);
+  _registration_civix_navigationMenu($menu);
 }

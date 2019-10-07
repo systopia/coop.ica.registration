@@ -1,0 +1,91 @@
+{
+  "title": "Participant Badge (PDF)",
+  "entity": "Participant",
+  "configuration": {
+  },
+  "modules": [
+    {
+      "class": "CRM_Xportx_Module_ContactBase",
+      "config": {
+        "fields": [
+          {
+            "key": "last_name",
+            "label": "Nachname"
+          },
+          {
+            "key": "first_name",
+            "label": "Vorname"
+          }
+        ],
+        "order_by": [
+          {
+            "alias": "contact",
+            "field": "sort_name",
+            "sort": "asc"
+          }
+        ]
+      }
+    },
+    {
+      "class": "CRM_Xportx_Module_CustomGroup",
+      "config": {
+        "params": {
+          "group_name": "Location_and_Language"
+        },
+        "fields": [
+          {
+            "key": "Country",
+            "label": "country"
+          }
+        ]
+      }
+    },
+    {
+      "class": "CRM_Xportx_Module_Participant",
+      "config": {
+        "params": {
+        },
+        "fields": [
+          {
+            "key": "role",
+            "label": "Rolle"
+          },
+          {
+            "key": "custom_GA_Registration__badge",
+            "label": "badge"
+          },
+          {
+            "key": "custom_GA_Registration__organisation_badge",
+            "label": "organisation_badge"
+          }
+        ]
+      }
+    },
+    {
+      "class": "CRM_Xportx_Module_Event",
+      "config": {
+        "params": {
+        },
+        "fields": [
+          {
+            "key": "title",
+            "label": "Veranstaltungstitel"
+          },
+          {
+            "key": "start_date",
+            "label": "Datum"
+          }
+        ]
+      }
+    }
+  ],
+  "exporter": {
+    "class": "CRM_Xportx_Exporter_PDF",
+    "config": {
+      "file_name": "Badges.pdf",
+      "smarty_template": "ICA10513_export_participant_badge.tpl",
+      "format_id": "1049",
+      "enforce_dompdf": "0"
+    }
+  }
+}
