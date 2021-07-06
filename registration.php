@@ -16,7 +16,7 @@ require_once 'registration.civix.php';
 
 use CRM_Registration_ExtensionUtil as E;
 
-define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2019-');
+define('EVENT_FEE_INVOICE_PREFIX', 'IN-GA2021-');
 
 /**
  * Implements hook_civicrm_invoiceNumber().
